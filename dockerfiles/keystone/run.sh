@@ -13,6 +13,23 @@ KEYSTONE_DBUSER=${KEYSTONE_DBUSER:-keystone}
 KEYSTONE_DBPASS=${KEYSTONE_DBPASS:-devops}
 KEYSTONE_HOST=${KEYSTONE_HOST:-keystone}
 
+create_service_credentials() {
+	CMD=$1
+	c=0
+	$CMD
+	while [ $? -ne 0 ] && [ $c -lt 4 ]
+	do
+		sleep 5
+		c=$((c+1))
+		$CMD
+	done
+	if [ $? -ne 0 ]
+	then
+		echo -e "Problem in running:\n$CMD"
+		exit 1
+	fi
+}
+
 keystone_config() {
 
 MYSQL="mysql -h${MYSQL_HOST} -uroot -p${MYSQL_ROOT_PASSWORD}"
@@ -53,16 +70,22 @@ OS_IDENTITY_API_VERSION=3
 
 export OS_TOKEN OS_URL OS_IDENTITY_API_VERSION
 
-openstack service create  --name keystone identity
-openstack endpoint create --region $REGION identity public http://${KEYSTONE_HOST}:5000/v3
-openstack endpoint create --region $REGION identity internal http://${KEYSTONE_HOST}:5000/v3
-openstack endpoint create --region $REGION identity admin http://${KEYSTONE_HOST}:5000/v3
-openstack domain create --description "Default Domain" default
-openstack project create --domain default  --description "Admin Project" admin
-openstack user create --domain default --password $ADMIN_PASSWORD admin
-openstack role create admin
-openstack role add --project admin --user admin admin
-openstack project create --domain default --description "Service Project" service
+if [ "`openstack user list | grep admin`" ]
+then
+	:
+else
+	create_service_credentials "openstack service create  --name keystone identity"
+	create_service_credentials "openstack endpoint create --region $REGION identity public http://${KEYSTONE_HOST}:5000/v3"
+	create_service_credentials "openstack endpoint create --region $REGION identity internal http://${KEYSTONE_HOST}:5000/v3"
+	create_service_credentials "openstack endpoint create --region $REGION identity admin http://${KEYSTONE_HOST}:5000/v3"
+	create_service_credentials "openstack domain create --description \"Default Domain\" default"
+	create_service_credentials "openstack project create --domain default  --description \"Admin Project\" admin"
+	create_service_credentials "openstack user create --domain default --password $ADMIN_PASSWORD admin"
+	create_service_credentials "openstack role create admin"
+	create_service_credentials "openstack role add --project admin --user admin admin"
+	create_service_credentials "openstack project create --domain default --description \"Service Project\" service"
+
+fi
 
 service apache2 stop
 

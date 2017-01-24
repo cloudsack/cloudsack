@@ -20,6 +20,23 @@ GLANCE_DBPASS=${GLANCE_DBPASS:-devops}
 REGION=${REGION:-RegionOne}
 SERVICE_PORT=${SERVICE_PORT:-9292}
 
+create_service_credentials() {
+	CMD=$1
+	c=0
+	$CMD
+	while [ $? -ne 0 ] && [ $c -lt 4 ]
+	do
+		sleep 5
+		c=$((c+1))
+		$CMD
+	done
+	if [ $? -ne 0 ]
+	then
+		echo -e "Problem in running:\n$CMD"
+		exit 1
+	fi
+}
+
 glance_config() {
 
 MYSQL="mysql -h${MYSQL_HOST} -uroot -p${MYSQL_ROOT_PASSWORD}"
@@ -53,14 +70,17 @@ export OS_IMAGE_API_VERSION=2
 EOF
 
 source ~/openrc
-
-openstack user create --domain default --password ${GLANCE_PASSWORD} ${GLANCE_USER}
-openstack role add --project service --user ${GLANCE_USER} admin
-openstack service create --name glance image
-openstack endpoint create --region $REGION image public http://${GLANCE_HOST}:${SERVICE_PORT}
-openstack endpoint create --region $REGION image internal http://${GLANCE_HOST}:${SERVICE_PORT}
-openstack endpoint create --region $REGION image admin http://${GLANCE_HOST}:${SERVICE_PORT}
-
+if [ "`openstack user list | grep ${GLANCE_USER}`" ]
+then
+	:
+else
+	create_service_credentials "openstack user create --domain default --password ${GLANCE_PASSWORD} ${GLANCE_USER}"
+	create_service_credentials "openstack role add --project service --user ${GLANCE_USER} admin"
+	create_service_credentials "openstack service create --name glance image"
+	create_service_credentials "openstack endpoint create --region $REGION image public http://${GLANCE_HOST}:${SERVICE_PORT}"
+	create_service_credentials "openstack endpoint create --region $REGION image internal http://${GLANCE_HOST}:${SERVICE_PORT}"
+	create_service_credentials "openstack endpoint create --region $REGION image admin http://${GLANCE_HOST}:${SERVICE_PORT}"
+fi
 }
 if [ ! -f ~/openrc ]; then
 	glance_config

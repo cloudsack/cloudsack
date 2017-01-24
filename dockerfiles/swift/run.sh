@@ -24,6 +24,23 @@ SERVICE_PORT=${SERVICE_PORT:-8080}
 SWIFT_HASH_PATH_SUFFIX=${SWIFT_HASH_PATH_SUFFIX:-hashsuffix}
 SWIFT_HASH_PATH_PREFIX=${SWIFT_HASH_PATH_PREFIX:-hashprefix}
 
+create_service_credentials() {
+	CMD=$1
+	c=0
+	$CMD
+	while [ $? -ne 0 ] && [ $c -lt 4 ]
+	do
+		sleep 5
+		c=$((c+1))
+		$CMD
+	done
+	if [ $? -ne 0 ]
+	then
+		echo -e "Problem in running:\n$CMD"
+		exit 1
+	fi
+}
+
 swift_config() {
 
 cat >~/openrc <<EOF
@@ -38,12 +55,19 @@ export OS_IMAGE_API_VERSION=2
 EOF
 
 source ~/openrc
-openstack user create --domain default --password ${SWIFT_PASSWORD} ${SWIFT_USER}
-openstack role add --project service --user ${SWIFT_USER} admin
-openstack service create --name swift object-store
-openstack endpoint create --region $REGION_NAME object-store  public http://${HOSTNAME}:${SERVICE_PORT}/v1/AUTH_%\(tenant_id\)s
-openstack endpoint create --region $REGION_NAME object-store internal http://${HOSTNAME}:${SERVICE_PORT}/v1/AUTH_%\(tenant_id\)s
-openstack endpoint create --region $REGION_NAME object-store admin http://${HOSTNAME}:${SERVICE_PORT}/v1/AUTH_%\(tenant_id\)s
+
+if [ "`openstack user list | grep ${SWIFT_USER}`" ]
+then
+	:
+else
+	create_service_credentials "openstack user create --domain default --password ${SWIFT_PASSWORD} ${SWIFT_USER}"
+	create_service_credentials "openstack role add --project service --user ${SWIFT_USER} admin"
+	create_service_credentials "openstack service create --name swift object-store"
+	create_service_credentials "openstack endpoint create --region $REGION_NAME object-store  public http://${HOSTNAME}:${SERVICE_PORT}/v1/AUTH_%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION_NAME object-store internal http://${HOSTNAME}:${SERVICE_PORT}/v1/AUTH_%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION_NAME object-store admin http://${HOSTNAME}:${SERVICE_PORT}/v1/AUTH_%\(tenant_id\)s"
+
+fi
 
 sed -i "/\[filter:authtoken\]/a auth_uri = http://${KEYSTONE_HOST}:5000\nauth_url = http://${KEYSTONE_HOST}:35357\nmemcached_servers = ${MEMCACHED_HOST}:${MEMCACHED_PORT}\nauth_type = password\nproject_domain_name = ${PROJECT_DOMAIN}\nuser_domain_name = ${USER_DOMAIN}\nproject_name = ${PROJECT_NAME}\nusername = ${SWIFT_USER}\npassword = ${SWIFT_PASSWORD}\ndelay_auth_decision = True" ${SWIFT_PROXY_FILE}
 
