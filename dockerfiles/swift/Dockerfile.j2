@@ -1,0 +1,20 @@
+FROM {{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}
+MAINTAINER Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>
+
+RUN apt-get update && apt-get -y install swift swift-proxy python-swiftclient python-keystoneclient python-keystonemiddleware memcached
+
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+COPY sample_proxy-server.conf /etc/swift/proxy-server.conf
+
+COPY config_ring.sh /config_ring.sh
+
+COPY sample_swift.conf /etc/swift/swift.conf
+
+EXPOSE 8776
+
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+CMD ["/run.sh"]
+
