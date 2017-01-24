@@ -25,6 +25,22 @@ BACKEND_DRIVER=${BACKEND_DRIVER:-nfs}
 NFS_HOST=${NFS_HOST:-nfs}
 NFS_EXPORT_DIR=${NFS_EXPORT_DIR:-/nfs}
 
+create_service_credentials() {
+	CMD=$1
+	c=0
+	$CMD
+	while [ $? -ne 0 ] && [ $c -lt 4 ]
+	do
+		sleep 5
+		c=$((c+1))
+		$CMD
+	done
+	if [ $? -ne 0 ]
+	then
+		echo -e "Problem in running:\n$CMD"
+		exit 1
+	fi
+}
 cinder_config() {
 
 MYSQL="mysql -h${MYSQL_HOST} -uroot -p${MYSQL_ROOT_PASSWORD}"
@@ -44,17 +60,21 @@ export OS_IMAGE_API_VERSION=2
 EOF
 
 source ~/openrc
-openstack user create --domain default --password ${CINDER_PASSWORD} ${CINDER_USER}
-openstack role add --project service --user ${CINDER_USER} admin
-openstack service create --name cinder volume
-openstack service create --name cinderv2 volumev2
-openstack endpoint create --region $REGION volume  public http://${HOSTNAME}:${SERVICE_PORT}/v1/%\(tenant_id\)s
-openstack endpoint create --region $REGION volume internal http://${HOSTNAME}:${SERVICE_PORT}/v1/%\(tenant_id\)s
-openstack endpoint create --region $REGION volume admin http://${HOSTNAME}:${SERVICE_PORT}/v1/%\(tenant_id\)s
-
-openstack endpoint create --region $REGION volumev2  public http://${HOSTNAME}:${SERVICE_PORT}/v2/%\(tenant_id\)s
-openstack endpoint create --region $REGION volumev2 internal http://${HOSTNAME}:${SERVICE_PORT}/v2/%\(tenant_id\)s
-openstack endpoint create --region $REGION volumev2 admin http://${HOSTNAME}:${SERVICE_PORT}/v2/%\(tenant_id\)s
+if [ "`openstack user list | grep ${CINDER_USER}`" ]
+then
+	:
+else
+	create_service_credentials "openstack user create --domain default --password ${CINDER_PASSWORD} ${CINDER_USER}"
+	create_service_credentials "openstack role add --project service --user ${CINDER_USER} admin"
+	create_service_credentials "openstack service create --name cinder volume"
+	create_service_credentials "openstack service create --name cinderv2 volumev2"
+	create_service_credentials "openstack endpoint create --region $REGION volume  public http://${HOSTNAME}:${SERVICE_PORT}/v1/%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION volume internal http://${HOSTNAME}:${SERVICE_PORT}/v1/%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION volume admin http://${HOSTNAME}:${SERVICE_PORT}/v1/%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION volumev2  public http://${HOSTNAME}:${SERVICE_PORT}/v2/%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION volumev2 internal http://${HOSTNAME}:${SERVICE_PORT}/v2/%\(tenant_id\)s"
+	create_service_credentials "openstack endpoint create --region $REGION volumev2 admin http://${HOSTNAME}:${SERVICE_PORT}/v2/%\(tenant_id\)s"
+fi
 
 echo -e "\n[database]\nconnection = mysql+pymysql://${CINDER_DBUSER}:${CINDER_DBPASS}@${MYSQL_HOST}/cinder" >> ${CINDER_FILE}
 
