@@ -78,12 +78,12 @@ else
 	create_service_credentials "openstack endpoint create --region $REGION identity public http://${KEYSTONE_HOST}:5000/v3"
 	create_service_credentials "openstack endpoint create --region $REGION identity internal http://${KEYSTONE_HOST}:5000/v3"
 	create_service_credentials "openstack endpoint create --region $REGION identity admin http://${KEYSTONE_HOST}:5000/v3"
-	create_service_credentials "openstack domain create --description \"Default Domain\" default"
-	create_service_credentials "openstack project create --domain default  --description \"Admin Project\" admin"
+	create_service_credentials "openstack domain create --description Default_Domain default"
+	create_service_credentials "openstack project create --domain default  --description Admin_Project admin"
 	create_service_credentials "openstack user create --domain default --password $ADMIN_PASSWORD admin"
 	create_service_credentials "openstack role create admin"
 	create_service_credentials "openstack role add --project admin --user admin admin"
-	create_service_credentials "openstack project create --domain default --description \"Service Project\" service"
+	create_service_credentials "openstack project create --domain default --description Service_Project service"
 
 fi
 
