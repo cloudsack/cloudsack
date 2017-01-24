@@ -1,0 +1,139 @@
+namespace: default
+network: 
+   pod_network_cidr: 10.244.0.0/16
+   svc_network_cidr: 10.96.0.0/12
+svc_dns_domain: pramati.com
+token: 7e575c.a7b1a66a75d07701 
+
+kube_nameserver: 10.96.0.10 
+host_nameserver: 192.168.1.10
+docker:
+  registry: labs.pramati.com:5000
+  project: cloudsack
+  base_image: mitaka_base
+  tag: v1
+  images: [base, mysql, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift]
+
+services:
+  mysql:
+    name: mysql-controller 
+    svc_name: mysql-svc
+    image: mitaka_mysql:v1
+    root_passwd: devops 
+    root_host: "%"
+    replica: 1
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      mysql:
+        port: 3306
+        nodePort: 30010
+  
+  rabbitmq:
+    name: rabbitmq-controller
+    svc_name: rabbitmq-svc
+    image: mitaka_rabbitmq:v1
+    user: openstack
+    passwd: devops
+    replica: 1
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      public:
+        port: 5672
+        nodePort: 30011
+  
+  memcached: 
+    name: memcached-controller
+    svc_name: memcached-svc
+    image: mitaka_memcached:v1
+    replica: 1
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      public:
+        port: 11211
+        nodePort: 30012
+  
+  keystone:
+    name: identity-controller
+    svc_name: identity-svc
+    image: mitaka_keystone:v1
+    replica: 3
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      public:
+        port: 5000
+        nodePort: 30001
+      admin:
+        port: 35357
+        nodePort: 30002
+    db_user: keystone 
+    db_pass: devops
+    admin_token: e774988772b03e1ea60f
+    admin_user: admin
+    admin_pass: devops
+    region: ImagineLabs
+  
+  glance:
+    name: glance-controller
+    svc_name: glance-svc
+    image: mitaka_glance:v1
+    replica: 3
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      registry:
+        port: 9191
+        nodePort: 30003
+      api:
+        port: 9292
+        nodePort: 30004
+    user: glance
+    passwd: devops
+    db_user: glance 
+    db_pass: devops
+  
+  nova:
+    name: nova-controller
+    svc_name: compute-svc
+    image: mitaka_nova:v1
+    replica: 3
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      vnc:
+        port: 6080
+        nodePort: 30005
+      ec2:
+        port: 8773
+        nodePort: 30006
+      api:
+        port: 8774
+        nodePort: 30007
+      metadata:
+        port: 8775
+        nodePort: 30008
+    user: nova
+    passwd: devops
+    db_user: nova
+    db_pass: devops
+    metadata_secret: openstack
+  
+  neutron:
+    name: neutron-controller
+    svc_name: neutron-svc
+    image: mitaka_neutron-selfservice:v1
+    replica: 3
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      api:
+        port: 9696
+        nodePort: 30009
+    user: neutron
+    passwd: devops
+    db_user: neutron
+    db_pass: devops
+    providor_interface: eth0
