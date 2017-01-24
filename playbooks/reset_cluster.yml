@@ -1,0 +1,10 @@
+---
+  - name: Install Kubernetes
+    hosts: kubemaster::kubeminion
+    become: yes
+    tasks:
+      - name: reset cluster
+        shell: kubeadm reset
+
+      - name: restart kubelet
+        systemd: state=restarted name=kubelet

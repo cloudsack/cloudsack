@@ -1,0 +1,37 @@
+---
+    - name: Deploy Openstack Service
+      hosts: kubemaster
+      hosts: localhost
+      connection: local
+      tasks:
+        - set_fact: kind=Deployment
+        - set_fact: components="nova, neutron, glance, keystone, rabbitmq, mysql, memcached"
+          when: components is not defined
+
+        - name: generate Deployment file 
+          template: src=../templates/deployment.j2 dest=/tmp/{{ item.key }}.yaml
+          with_dict: "{{ services }}"
+          when: item.key in components
+
+        - name: Generate Mysql Files
+          shell: kubectl create -f /tmp/mysql.yaml
+
+        - name: Wait for mysql to come up
+          pause: seconds=120
+
+        - name: Deploy Keystone
+          shell: kubectl create -f /tmp/keystone.yaml
+
+        - name: Wait for keystone to come up
+          pause: seconds=120
+
+        - name: Deploy {{ item }}
+          shell: kubectl create -f /tmp/{{ item.key }}.yaml
+          with_dict: "{{ services }}"
+          when: item.key != "keystone" and item.key != "mysql"
+
+        - set_fact: kind=Replicas
+        - name: generate Replicas file
+          template: src=../templates/deployment.j2 dest=/tmp/{{ item.key }}-replica.yaml
+          with_dict: "{{ services }}"
+          when: item.key in components
