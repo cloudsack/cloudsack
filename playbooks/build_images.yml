@@ -1,0 +1,22 @@
+---
+  - name: Building Images
+    hosts: localhost
+    connection: local
+    become: yes
+    tasks:
+      - set_fact: components="base, mysql, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift"
+        when: components is not defined
+
+      - name: Generate Dockerfiles
+        template: src=../dockerfiles/{{ item }}/Dockerfile.j2 dest=../dockerfiles/{{ item }}/Dockerfile 
+        when: item in components
+        with_items: "{{ docker.images }}"
+
+      - name: building image
+        docker_image:
+            path: ../dockerfiles/{{ item }}/ 
+            name: "{{ docker.registry }}/{{ docker.project }}/mitaka_{{ item }}"
+            tag: "{{ docker.tag }}"
+            push: yes
+        when: item in components
+        with_items: "{{ docker.images }}"
