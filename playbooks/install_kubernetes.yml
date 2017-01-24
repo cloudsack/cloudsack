@@ -12,7 +12,7 @@
       - debug: var=result.stdout
 
       - name: Generate network yaml
-        template: src=../templates/network.yml dest=/tmp/network.yml
+        template: src=../templates/kube-flannel.yml dest=/tmp/network.yml
 
       - name: Install Network pod
         shell: kubectl apply -f /tmp/network.yml
