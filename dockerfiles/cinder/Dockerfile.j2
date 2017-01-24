@@ -1,0 +1,14 @@
+FROM {{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}
+MAINTAINER Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>
+
+RUN apt-get update && apt-get -y install cinder-api cinder-scheduler cinder-volume nfs-common
+
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+EXPOSE 8776
+
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+CMD ["/run.sh"]
+
