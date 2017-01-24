@@ -1,0 +1,33 @@
+---
+    - name: Add repos
+      apt_repository: repo="deb http://ubuntu-cloud.archive.canonical.com/ubuntu trusty-updates/mitaka main" state=present
+
+    - name: Install required package
+      apt: name={{ item }} state=present force=yes dpkg_options='force-confold,force-confdef' #update_cache=true
+      with_items:
+        - python-openstackclient
+        - nova-compute
+        - neutron-linuxbridge-agent
+
+    - name: get compute node supports hardware acceleration 
+      command: egrep -c '(vmx|svm)' /proc/cpuinfo
+      register: hw_result
+      ignore_errors: true
+
+    - set_fact: virt_type="qemu"
+      when: hw_result.stdout == "0" 
+
+    - name: Generate nova.conf and nova-compute.conf
+      template: src={{ item }} dest=/etc/nova/{{ item }}
+      with_items:
+        - nova.conf
+        - nova-compute.conf
+
+    - name: Generate linuxbridge_agent.ini
+      template: src=linuxbridge_agent.ini dest=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
+
+    - name: start nova-compute and neutron-linuxbridge-agent
+      service: name={{ item }}  state=started
+      with_items:
+         - nova-compute
+         - neutron-linuxbridge-agent

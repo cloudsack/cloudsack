@@ -1,0 +1,6 @@
+---
+  - name: Install Kubernetes
+    hosts: compute
+    become: yes
+    roles:
+      - compute
