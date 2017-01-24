@@ -1,0 +1,15 @@
+---
+  - name: Add kubernetes APT Key
+    apt_key: url=https://packages.cloud.google.com/apt/doc/apt-key.gpg validate_certs=no state=present
+
+  - name: Add kubernetes Repository
+    apt_repository: repo="deb http://apt.kubernetes.io/ kubernetes-xenial main" state=present
+
+  - name: Install kubernetes and docker
+    apt: name={{ item }} state=present update_cache=true
+    with_items:
+      - kubelet
+      - kubeadm
+      - kubectl
+      - kubernetes-cni
+      - docker.io

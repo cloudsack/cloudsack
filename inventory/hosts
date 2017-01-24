@@ -1,0 +1,12 @@
+[kubemaster]
+kubemaster1 ansible_host=192.168.2.25 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
+[kubeminion]
+kubeminion1 ansible_host=192.168.2.26 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
+kubeminion2 ansible_host=192.168.2.27 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
+kubeminion3 ansible_host=192.168.2.28 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
+kubeminion4 ansible_host=192.168.2.29 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
+
+
+[compute]
+compute1 ansible_host=192.168.2.76 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
+compute2 ansible_host=192.168.2.80 ansible_user=admin ansible_ssh_pass=admin123 ansible_sudo_pass=admin123
