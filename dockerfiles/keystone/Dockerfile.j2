@@ -1,0 +1,25 @@
+FROM {{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}
+MAINTAINER Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>
+
+RUN echo "manual" > /etc/init/keystone.override
+RUN apt-get update && apt-get -y install keystone apache2 libapache2-mod-wsgi
+ 
+COPY wsgi-keystone.conf /etc/apache2/sites-available/wsgi-keystone.conf
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+RUN a2ensite wsgi-keystone
+
+EXPOSE 5000 35357
+
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+env APACHE_RUN_USER    www-data
+env APACHE_RUN_GROUP   www-data
+env APACHE_PID_FILE    /var/run/apache2.pid
+env APACHE_RUN_DIR     /var/run/apache2
+env APACHE_LOCK_DIR    /var/lock/apache2
+env APACHE_LOG_DIR     /var/log/apache2
+env LANG               C
+
+CMD ["/run.sh"]
