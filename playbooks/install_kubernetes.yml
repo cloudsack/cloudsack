@@ -16,13 +16,19 @@
 
       - name: Install Network pod
         shell: kubectl apply -f /tmp/network.yml
-      - command: sleep 60
+
+      - name: Wait for setup networking
+        pause: seconds=60 
 
   - name: Install Kubernetes
     hosts: kubeminion
+    serial: 1
     become: yes
     roles:
       - kubernetes
     tasks:
       - name: Join master
         shell: kubeadm join --token={{ token }} "{{ hostvars['kubemaster1']['ansible_host'] }}"
+
+      - name: Wait for setup networking
+        pause: seconds=10 
