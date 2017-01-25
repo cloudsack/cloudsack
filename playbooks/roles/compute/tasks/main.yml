@@ -27,7 +27,7 @@
       template: src=linuxbridge_agent.ini dest=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
 
     - name: start nova-compute and neutron-linuxbridge-agent
-      service: name={{ item }}  state=started
+      service: name={{ item }}  state=restarted
       with_items:
          - nova-compute
          - neutron-linuxbridge-agent
