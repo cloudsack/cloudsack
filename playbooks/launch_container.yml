@@ -1,10 +1,8 @@
 ---
     - name: Deploy Openstack Service
       hosts: kubemaster
-      hosts: localhost
-      connection: local
       tasks:
-        - set_fact: kind=Deployment
+        - set_fact: kind=ReplicationController
         - set_fact: components="nova, neutron, glance, keystone, rabbitmq, mysql, memcached"
           when: components is not defined
 
