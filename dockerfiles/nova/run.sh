@@ -27,23 +27,6 @@ NOVA_DBUSER=${NOVA_DBUSER:-nova}
 NOVA_PASSWORD=${NOVA_PASSWORD:-devops}
 SERVICE_PORT=${SERVICE_PORT:-8774}
 
-create_service_credentials() {
-	CMD=$1
-	c=0
-	$CMD
-	while [ $? -ne 0 ] && [ $c -lt 4 ]
-	do
-		sleep 5
-		c=$((c+1))
-		$CMD
-	done
-	if [ $? -ne 0 ]
-	then
-		echo -e "Problem in running:\n$CMD"
-		exit 1
-	fi
-}
-
 nova_config() {
 
 MYSQL="mysql -h${MYSQL_HOST} -uroot -p${MYSQL_ROOT_PASSWORD}"
@@ -71,12 +54,12 @@ if [ "`openstack user list | grep ${NOVA_USER}`" ]
 then
 	:
 else
-	create_service_credentials "openstack user create --domain default --password ${NOVA_PASSWORD} ${NOVA_USER}"
-	create_service_credentials "openstack role add --project service --user ${NOVA_USER} admin"
-	create_service_credentials "openstack service create --name nova compute"
-	create_service_credentials "openstack endpoint create --region $REGION compute  public http://${NOVA_HOST}:${SERVICE_PORT}/v2.1/%\(tenant_id\)s"
-	create_service_credentials "openstack endpoint create --region $REGION compute internal http://${NOVA_HOST}:${SERVICE_PORT}/v2.1/%\(tenant_id\)s"
-	create_service_credentials "openstack endpoint create --region $REGION compute admin http://${NOVA_HOST}:${SERVICE_PORT}/v2.1/%\(tenant_id\)s"
+	openstack user create --domain default --password ${NOVA_PASSWORD} ${NOVA_USER}
+	openstack role add --project service --user ${NOVA_USER} admin
+	openstack service create --name nova compute
+	openstack endpoint create --region $REGION compute  public http://${NOVA_HOST}:${SERVICE_PORT}/v2.1/%(tenant_id)s
+	openstack endpoint create --region $REGION compute internal http://${NOVA_HOST}:${SERVICE_PORT}/v2.1/%(tenant_id)s
+	openstack endpoint create --region $REGION compute admin http://${NOVA_HOST}:${SERVICE_PORT}/v2.1/%(tenant_id)s
 
 fi
 

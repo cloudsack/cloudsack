@@ -25,23 +25,6 @@ SERVICE_ORCHESTRATION_PORT=${SERVICE_ORCHESTRATION_PORT:-8004}
 SERVICE_CLOUDFORMATION_PORT=${SERVICE_CLOUDFORMATION_PORT:-8000}
 HEAT_DOMAIN_ADMIN_PASSWORD=${HEAT_DOMAIN_ADMIN_PASSWORD:-devops}
 
-create_service_credentials() {
-	CMD=$1
-	c=0
-	$CMD
-	while [ $? -ne 0 ] && [ $c -lt 4 ]
-	do
-		sleep 5
-		c=$((c+1))
-		$CMD
-	done
-	if [ $? -ne 0 ]
-	then
-		echo -e "Problem in running:\n$CMD"
-		exit 1
-	fi
-}
-
 heat_config() {
 
 MYSQL="mysql -h${MYSQL_HOST} -uroot -p${MYSQL_ROOT_PASSWORD}"
@@ -66,22 +49,22 @@ if [ "`openstack user list | grep ${HEAT_USER}`" ]
 then
 	:
 else
-	create_service_credentials "openstack user create --domain default --password ${HEAT_PASSWORD} ${HEAT_USER}"
-	create_service_credentials "openstack role add --project service --user ${HEAT_USER} admin"
-	create_service_credentials "openstack service create --name heat orchestration"
-	create_service_credentials "openstack service create --name heat-cfn cloudformation"
-	create_service_credentials "openstack endpoint create --region $REGION orchestration public http://${HEAT_HOST}:${SERVICE_ORCHESTRATION_PORT}/v1/%\(tenant_id\)s"
-	create_service_credentials "openstack endpoint create --region $REGION orchestration internal http://${HEAT_HOST}:${SERVICE_ORCHESTRATION_PORT}/v1/%\(tenant_id\)s"
-	create_service_credentials "openstack endpoint create --region $REGION orchestration admin http://${HEAT_HOST}:${SERVICE_ORCHESTRATION_PORT}/v1/%\(tenant_id\)s"
-	create_service_credentials "openstack endpoint create --region $REGION cloudformation public http://${HEAT_HOST}:${SERVICE_CLOUDFORMATION_PORT}/v1"
-	create_service_credentials "openstack endpoint create --region $REGION cloudformation internal http://${HEAT_HOST}:${SERVICE_CLOUDFORMATION_PORT}/v1"
-	create_service_credentials "openstack endpoint create --region $REGION cloudformation admin http://${HEAT_HOST}:${SERVICE_CLOUDFORMATION_PORT}/v1"
-	create_service_credentials "openstack domain create heat"
-	create_service_credentials "openstack user create --domain heat --password ${HEAT_DOMAIN_ADMIN_PASSWORD} heat_domain_admin"
-	create_service_credentials "openstack role add --domain heat --user-domain heat --user heat_domain_admin admin"
-	create_service_credentials "openstack role create heat_stack_owner"
-	create_service_credentials "openstack role add --project admin --user admin heat_stack_owner"
-	create_service_credentials "openstack role create heat_stack_user"
+	openstack user create --domain default --password ${HEAT_PASSWORD} ${HEAT_USER}
+	openstack role add --project service --user ${HEAT_USER} admin
+	openstack service create --name heat orchestration
+	openstack service create --name heat-cfn cloudformation
+	openstack endpoint create --region $REGION orchestration public http://${HEAT_HOST}:${SERVICE_ORCHESTRATION_PORT}/v1/%(tenant_id)s
+	openstack endpoint create --region $REGION orchestration internal http://${HEAT_HOST}:${SERVICE_ORCHESTRATION_PORT}/v1/%(tenant_id)s
+	openstack endpoint create --region $REGION orchestration admin http://${HEAT_HOST}:${SERVICE_ORCHESTRATION_PORT}/v1/%(tenant_id)s
+	openstack endpoint create --region $REGION cloudformation public http://${HEAT_HOST}:${SERVICE_CLOUDFORMATION_PORT}/v1
+	openstack endpoint create --region $REGION cloudformation internal http://${HEAT_HOST}:${SERVICE_CLOUDFORMATION_PORT}/v1
+	openstack endpoint create --region $REGION cloudformation admin http://${HEAT_HOST}:${SERVICE_CLOUDFORMATION_PORT}/v1
+	openstack domain create heat
+	openstack user create --domain heat --password ${HEAT_DOMAIN_ADMIN_PASSWORD} heat_domain_admin
+	openstack role add --domain heat --user-domain heat --user heat_domain_admin admin
+	openstack role create heat_stack_owner
+	openstack role add --project admin --user admin heat_stack_owner
+	openstack role create heat_stack_user
 
 fi
 

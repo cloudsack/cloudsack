@@ -25,23 +25,6 @@ NEUTRON_DB=${NEUTRON_DB:-neutron}
 NEUTRON_DBUSER=${NEUTRON_DBUSER:-neutron}
 SERVICE_PORT=${SERVICE_PORT:-9696}
 
-create_service_credentials() {
-	CMD=$1
-	c=0
-	$CMD
-	while [ $? -ne 0 ] && [ $c -lt 4 ]
-	do
-		sleep 5
-		c=$((c+1))
-		$CMD
-	done
-	if [ $? -ne 0 ]
-	then
-		echo -e "Problem in running:\n$CMD"
-		exit 1
-	fi
-}
-
 neutron_config() {
 
 MYSQL="mysql -h${MYSQL_HOST} -uroot -p${MYSQL_ROOT_PASSWORD}"
@@ -66,12 +49,12 @@ if [ "`openstack user list | grep ${NEUTRON_USER}`" ]
 then
 	:
 else
-	create_service_credentials "openstack user create --domain default --password ${NEUTRON_PASSWORD} ${NEUTRON_USER}"
-	create_service_credentials "openstack role add --project service --user ${NEUTRON_USER} admin"
-	create_service_credentials "openstack service create --name neutron network"
-	create_service_credentials "openstack endpoint create --region $REGION network  public http://${NEUTRON_HOST}:${SERVICE_PORT}"
-	create_service_credentials "openstack endpoint create --region $REGION network internal http://${NEUTRON_HOST}:${SERVICE_PORT}"
-	create_service_credentials "openstack endpoint create --region $REGION network admin http://${NEUTRON_HOST}:${SERVICE_PORT}"
+	openstack user create --domain default --password ${NEUTRON_PASSWORD} ${NEUTRON_USER}
+	openstack role add --project service --user ${NEUTRON_USER} admin
+	openstack service create --name neutron network
+	openstack endpoint create --region $REGION network  public http://${NEUTRON_HOST}:${SERVICE_PORT}
+	openstack endpoint create --region $REGION network internal http://${NEUTRON_HOST}:${SERVICE_PORT}
+	openstack endpoint create --region $REGION network admin http://${NEUTRON_HOST}:${SERVICE_PORT}
 
 fi
 
