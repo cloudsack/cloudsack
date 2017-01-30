@@ -1,0 +1,50 @@
+---
+   - name: install dependent packages
+     apt: name={{ item }} state=present
+     with_items: 
+       - ebtables
+       - bridge_utils
+
+   - name: enable ebtables kernel module
+     command: modprobe {{ item }} 
+     with_items:
+       - ebtables
+       - ip6table_filter
+       - nf_conntrack_ipv4
+       - xt_conntrack
+       - nf_conntrack
+
+   - name: Update sysctl parameter open file limit
+     sysctl: name={{ item.name }} value={{ item.value }}
+     with_items:
+       - { name: 'fs.file-max', value: '1024000' }
+       - { name: 'vm.max_map_count', value: '262144' }
+       - { name: 'net.ipv4.ip_forward', value: '1' }
+       - { name: 'net.netfilter.nf_conntrack_max', value: '131072' }
+       - { name: 'net.netfilter.nf_conntrack_tcp_timeout_established', value: '86400'}
+       - { name: 'net.netfilter.nf_conntrack_tcp_timeout_close_wait', value: '3600'}
+       - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+       - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+       - { name: 'kernel.panic', value: '60' }
+       - { name: 'net.ipv4.ip_local_port_range', value: '"2000 65535"' }
+       - { name: 'net.ipv4.tcp_max_tw_buckets', value: '2000000' }
+       - { name: 'net.ipv4.conf.default.arp_accept', value: '1' }
+       - { name: 'net.ipv4.tcp_tw_reuse', value: '1'}
+       - { name: 'net.ipv4.tcp_tw_recycle', value: '1'}
+       - { name: 'net.ipv4.tcp_fin_timeout', value: '10' }
+       - { name: 'net.ipv4.tcp_slow_start_after_idle', value: 0}
+       - { name: 'net.ipv4.tcp_low_latency', value: '1'}
+       - { name: 'net.core.netdev_max_backlog', value: '261144' }
+       - { name: 'net.ipv4.tcp_keepalive_intvl', value: '3' }
+       - { name: 'net.ipv4.tcp_keepalive_time', value: '30' }
+       - { name: 'net.ipv4.tcp_keepalive_probes', value: '8' }
+       - { name: 'net.ipv4.conf.all.arp_accept', value: '1' }
+       - { name: 'net.ipv4.tcp_retries2', value: '5' }
+       - { name: 'net.ipv4.ip_nonlocal_bind', value: '1' }
+
+   - name: Update /etc/default/docker
+     lineinfile: dest=/etc/default/docker  line="DOCKER_OPTS=\"--insecure-registry {{ docker.registry }}\"" state=present
+     when: not docker.registry_secure
+
+   - name: restart docker
+     service: name=docker state=restarted

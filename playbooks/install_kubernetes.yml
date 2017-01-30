@@ -3,6 +3,7 @@
     hosts: kubemaster
     become: yes
     roles:
+      - prepare_host
       - kubernetes
     tasks:
       - name: Initializing master
@@ -25,6 +26,7 @@
     serial: 1
     become: yes
     roles:
+      - prepare_host
       - kubernetes
     tasks:
       - name: Join master

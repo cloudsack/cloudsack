@@ -3,4 +3,5 @@
     hosts: compute
     become: yes
     roles:
+      - prepare_host
       - compute
