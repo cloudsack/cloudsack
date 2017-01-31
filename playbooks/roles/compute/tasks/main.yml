@@ -3,7 +3,7 @@
       apt_repository: repo="deb http://ubuntu-cloud.archive.canonical.com/ubuntu trusty-updates/mitaka main" state=present
 
     - name: Install required package
-      apt: name={{ item }} state=present force=yes dpkg_options='force-confold,force-confdef' #update_cache=true
+      apt: name={{ item }} state=present force=yes dpkg_options='force-confold,force-confdef' update_cache=true
       with_items:
         - python-openstackclient
         - nova-compute
