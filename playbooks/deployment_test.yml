@@ -1,0 +1,200 @@
+---
+  - name: Install Kubernetes
+    hosts: kubemaster
+    become: yes
+    tasks:
+      - name: install dependent package
+        apt: name={{ item }} state=present
+        with_items: 
+          - python-shade
+
+      - name: check file exists
+        stat: path=/tmp/cirros-0.3.4-x86_64-disk.img
+        register: image_file
+ 
+      - name: get image
+        get_url: url=http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img dest=/tmp/
+        when: image_file.stat.exists == False
+
+      - os_image:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:5000/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          name: cirros
+          container_format: bare
+          disk_format: qcow2
+          state: present
+          filename: /tmp/cirros-0.3.4-x86_64-disk.img
+
+      - os_keypair:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:5000/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          name: cloudsack_key
+
+      - os_security_group:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:5000/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          name: cloudsack
+          description: updated description for the cloudsack security group
+
+      - os_security_group_rule:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:5000/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          security_group: cloudsack
+          protocol: icmp
+          remote_ip_prefix: 0.0.0.0/0
+
+      - os_security_group_rule:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:5000/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          security_group: cloudsack
+          port_range_min: 22
+          port_range_max: 22
+          protocol: tcp
+          remote_ip_prefix: 0.0.0.0/0
+
+      - os_network:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          name: provider
+          shared: yes
+          provider_physical_network: yes
+          provider_network_type: flat
+          external: true
+
+      - os_subnet:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          network_name: provider
+          name: provider
+          cidr: 192.168.2.0/24
+          dns_nameservers:
+             - 192.168.1.10
+          allocation_pool_start: 192.168.2.201
+          allocation_pool_end: 192.168.2.250
+          gateway_ip: 192.168.2.1
+
+      - os_network:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          name: selfservice
+
+      - os_subnet:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          network_name: selfservice
+          name: selfservice
+          cidr: 172.16.1.0/24
+          dns_nameservers:
+             - 8.8.4.4
+          gateway_ip: 172.16.1.1
+
+
+#      - os_router:
+#          auth:
+#            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+#            username: "{{ services.keystone.admin_user }}"
+#            password: "{{ services.keystone.admin_pass }}"
+#            project_name: admin
+#            user_domain_name: default
+#            project_domain_name: default
+#          state: present
+#          name: router
+
+      - os_router:
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          state: present
+          name: router
+          network: provider
+          external_fixed_ips: 
+            - subnet: provider 
+          interfaces:
+            - selfservice
+
+#      - os_networks_facts:
+#          auth:
+#            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+#            username: "{{ services.keystone.admin_user }}"
+#            password: "{{ services.keystone.admin_pass }}"
+#            project_name: admin
+#            user_domain_name: default
+#            project_domain_name: default
+#          #name: selfservice
+
+#      - debug: var=openstack_networks
+
+      - os_server:
+          state: present
+          auth:
+            auth_url: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:35357/v3
+            username: "{{ services.keystone.admin_user }}"
+            password: "{{ services.keystone.admin_pass }}"
+            project_name: admin
+            user_domain_name: default
+            project_domain_name: default
+          name: "vm-{{ ansible_date_time.epoch }}"
+          image: cirros
+          key_name: cloudsack_key
+          security_groups: cloudsack
+          timeout: 200
+          flavor: 1
+          nics:
+            - net-name: selfservice
+            - net-name: provider
+          meta: "hostname=testvm1"
