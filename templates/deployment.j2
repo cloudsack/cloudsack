@@ -1,4 +1,4 @@
-{% if kind == "ReplicationController" %}
+{% if kind == "Deployment" %}
 ---
 apiVersion: v1
 kind: Service
@@ -17,8 +17,8 @@ spec:
 {% endif %}
 
 ---
-apiVersion: v1
-kind: ReplicationController
+apiVersion: extensions/v1beta1
+kind: Deployment
 metadata:
   name: {{ item.value.name }}
 spec:
