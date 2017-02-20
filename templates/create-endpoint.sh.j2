@@ -1,0 +1,56 @@
+#!/bin/bash
+
+SERVICE={{ item.key }}
+TYPE={{ item.value.type }}
+USER={{ item.value.user }}
+PASSWD={{ item.value.passwd }}
+PROJECT_NAME={{ item.value.project_name }}
+REGION={{ services.keystone.region }}
+{% if item.value.path is defined %}
+path="/{{ item.value.path }}"
+{% else %}
+path=""
+{% endif %}
+
+if [ ! "`/usr/bin/openstack service list | /bin/grep ${TYPE}`" ]
+then
+	/usr/bin/openstack service create --name $SERVICE  ${TYPE}
+fi
+{% if item.key == 'keystone' %}
+if [ ! "`/usr/bin/openstack endpoint list | /bin/grep ${TYPE}`" ]
+then
+	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.public.port }}${path}
+	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.public.port }}${path}
+	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.admin.port }}${path}
+fi
+if [ ! "`/usr/bin/openstack domain list`" ]
+then
+	/usr/bin/openstack domain create --description "Default Domain" default
+fi
+if [ ! "`/usr/bin/openstack project list | /bin/grep admin`" ]
+then
+	/usr/bin/openstack project create --domain default --description "Admin Project" admin
+fi
+if [ ! "`/usr/bin/openstack project list | /bin/grep service`" ]
+then
+	/usr/bin/openstack project create --domain default --description "Service Project" service
+fi
+if [ ! "`/usr/bin/openstack role list`" ]
+then
+	/usr/bin/openstack role create admin
+fi
+{%else%}
+if [ ! "`/usr/bin/openstack endpoint list | /bin/grep ${TYPE}`" ]
+then
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${path}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${path}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${path}
+fi
+{% endif %}
+
+if [ ! "`/usr/bin/openstack user list | /bin/grep ${USER}`" ]
+then
+	/usr/bin/openstack user create --domain default --password ${PASSWD} ${USER}
+fi
+
+/usr/bin/openstack role add --project ${PROJECT_NAME} --user ${USER} admin

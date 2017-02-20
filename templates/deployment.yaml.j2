@@ -1,0 +1,279 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ item.value.name }}
+  namespace: {{ namespace }}
+spec:
+{% if kind == "Replicas" %}
+  replicas: {{ item.value.replica }}
+{% else %}
+  replicas: 1
+{% endif %}
+  template:
+    metadata:
+      labels:
+        unit: {{ item.key }}
+{% if item.key == 'keystone' %}
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "wait-for-mysql",
+            "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
+            "imagePullPolicy": "Always",
+            "command": ["/bin/bash", "-c", "echo \"waiting for Mysql to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.mysql.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+          }
+        ]'
+{% endif %}
+{% if item.key != 'keystone' and  item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "wait-for-keystone",
+            "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
+            "imagePullPolicy": "Always",
+            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; {% if item.key == 'neutron' %} echo  \"nameserver {{kube_nameserver}}\" > /etc/resolv.conf;{{ endif }} while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.keystone.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+          }
+        ]'
+{% endif %}
+    spec:
+{% if item.key == 'neutron' %}
+      hostNetwork: true
+{%endif%}
+      containers:
+        - resources:
+            limits: 
+              memory: {{ item.value.memory }}
+              cpu: {{ item.value.cpu }}
+          image: {{docker.registry }}/{{ docker.project }}/{{ item.value.image }}
+          name: {{ item.value.name }}
+{%if item.key == 'nova' or item.key == 'neutron'%}
+          securityContext:
+            privileged: true
+{%endif%}
+          ports:
+{%for key in item.value.ports%}
+          - containerPort: {{ item.value.ports[key]['port'] }}
+{%endfor%}
+{% if item.key == 'mysql' or item.key == 'rabbitmq' or item.key == 'memcached' or item.key == 'horizon' or item.key == 'keystone' %}
+          livenessProbe:
+            tcpSocket:
+              port: {{ item.value.ports.public.port }}
+            initialDelaySeconds: 120
+          readinessProbe:
+            tcpSocket:
+              port: {{ item.value.ports.public.port }}
+            initialDelaySeconds: 60
+{%endif%}
+{% if item.key == 'glance' or item.key == 'nova' or item.key == 'neutron' %}
+          livenessProbe:
+            tcpSocket:
+              port: {{ item.value.ports.api.port }}
+            initialDelaySeconds: 180
+          readinessProbe:
+            tcpSocket:
+              port: {{ item.value.ports.api.port }}
+            initialDelaySeconds: 120
+{%endif%}
+          env:
+            - name: MYSQL_HOST
+              value: {{ services.mysql.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
+            - name: KEYSTONE_HOST
+              value: {{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
+            - name: MEMCACHED_HOST
+              value: {{ services.memcached.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
+            - name: GLANCE_HOST
+              value: {{ services.glance.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
+            - name: NEUTRON_HOST
+              value: {{ services.neutron.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}  
+            - name: NOVA_HOST
+              value: {{ services.nova.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}  
+            - name: RABBITMQ_HOST
+              value: {{ services.rabbitmq.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}  
+            - name: ADMIN_USER
+              value: {{ services.keystone.user }}
+            - name: ADMIN_PASSWORD
+              value: {{ services.keystone.passwd }}
+{% if item.key == 'keystone' %}
+            - name: ADMIN_TOKEN
+              value: {{ item.value.admin_token }}
+            - name: OS_TOKEN
+              value: {{ item.value.admin_token }}
+            - name: OS_URL
+              value: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:{{services.keystone.ports.admin.port }}/{{ services.keystone.path }}
+            - name: OS_IDENTITY_API_VERSION
+              value: "{{ services.keystone.api_version }}"
+{%endif%}
+            - name: REGION
+              value: {{ services.keystone.region }}
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ services.mysql.root_passwd }}
+{% if item.key == 'mysql' %}
+            - name: MYSQL_ROOT_HOST
+              value: "{{ services.mysql.root_host }}"
+{%endif%}
+{% if item.value.db_user is defined %}
+            - name: {{ item.key | upper }}_DB
+              value: {{ item.value.db }}
+            - name: {{ item.key | upper }}_DBUSER
+              value: {{ item.value.db_user }}
+            - name: {{ item.key | upper }}_DBPASS
+              value: {{ item.value.db_pass }}
+{% endif %}
+{% if item.key != 'keystone' and  item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+            - name: {{ item.key | upper }}_USER
+              value: {{ item.value.user }}
+            - name: {{ item.key | upper }}_PASSWORD
+              value: {{ item.value.passwd }}
+{%endif%}
+            - name: RABBITMQ_USER
+              value: {{ services.rabbitmq.user }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ services.rabbitmq.passwd }}
+{% if item.key == 'rabbitmq' %}
+            - name: RABBITMQ_DEFAULT_USER
+              value: {{ services.rabbitmq.user }}
+            - name: RABBITMQ_DEFAULT_PASS
+              value: {{ services.rabbitmq.passwd }}
+{%endif%}
+{% if item.key == 'nova'%}
+            - name: METADATA_SECRET
+              value: {{ services.nova.metadata_secret }}
+            - name: NEUTRON_USER
+              value: {{ services.neutron.user }} 
+            - name: NEUTRON_PASSWORD
+              value: {{ services.neutron.passwd }}
+{% elif item.key == 'neutron'%}
+            - name: METADATA_SECRET
+              value: {{ services.nova.metadata_secret }}
+            - name: KUBE_NAMESERVER
+              value: {{ kube_nameserver }}
+            - name: HOST_NAMESERVER
+              value: {{ host_nameserver }}
+{%endif%}
+{% if item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+          command: [ "/bin/bash", "-c", "/bin/bash /opt/run/run.sh" ]
+          volumeMounts:
+{% if item.key == 'keystone' %}
+           - mountPath: /opt/keystone
+             name: keystone-conf
+           - mountPath: /opt/conf
+             name: apache-conf
+{% endif %}
+{% if item.key == 'glance' %}
+           - mountPath: /opt/glance-api
+             name: glance-api
+           - mountPath: /opt/glance-registry
+             name: glance-registry
+{% endif %}
+{% if item.key == 'nova' %}
+           - mountPath: /opt/nova-conf
+             name: nova-conf
+{% endif%}
+{% if item.key == 'neutron' %}
+           - mountPath: /opt/neutron-conf
+             name: neutron-conf
+           - mountPath: /opt/neutron-dhcp
+             name: neutron-dhcp
+           - mountPath: /opt/neutron-l3
+             name: neutron-l3
+           - mountPath: /opt/neutron-ml2
+             name: neutron-ml2
+           - mountPath: /opt/neutron-linuxbridge
+             name: neutron-linuxbridge
+           - mountPath: /opt/neutron-metadata
+             name: neutron-metadata
+{% endif%}
+           - mountPath: /opt/run
+             name: {{item.key}}-run
+           - mountPath: /opt/openrc
+             name: openrc
+      volumes:
+{% if item.key == 'keystone' %}
+        - name: keystone-conf
+          configMap:
+            name: keystone-conf
+            items:
+             - key: keystone.conf
+               path: keystone.conf
+        - name: apache-conf
+          configMap:
+            name: apache-conf
+            items:
+             - key: apache2.conf
+               path: apache2.conf
+{% endif %}
+{% if item.key == 'glance' %}
+        - name: glance-api
+          configMap:
+            name: glance-api
+            items:
+             - key: glance-api.conf
+               path: glance-api.conf
+        - name: glance-registry
+          configMap:
+            name: glance-registry
+            items:
+             - key: glance-registry.conf
+               path: glance-registry.conf
+{% endif %}
+{% if item.key == 'nova' %}
+        - name: nova-conf
+          configMap:
+            name: nova-conf
+            items:
+             - key: nova.conf
+               path: nova.conf
+{% endif %}
+{% if item.key == 'neutron' %}
+        - name: neutron-conf
+          configMap:
+            name: neutron-conf
+            items:
+             - key: neutron.conf
+               path: neutron.conf
+        - name: neutron-dhcp
+          configMap:
+            name: neutron-dhcp
+            items:
+             - key: dhcp_agent.ini
+               path: dhcp_agent.ini
+        - name: neutron-l3
+          configMap:
+            name: neutron-l3
+            items:
+             - key: l3_agent.ini
+               path: l3_agent.ini
+        - name: neutron-linuxbridge
+          configMap:
+            name: neutron-linuxbridge
+            items:
+             - key: linuxbridge_agent.ini
+               path: linuxbridge_agent.ini
+        - name: neutron-metadata
+          configMap:
+            name: neutron-metadata
+            items:
+             - key: metadata_agent.ini
+               path: metadata_agent.ini
+        - name: neutron-ml2
+          configMap:
+            name: neutron-ml2
+            items:
+             - key: ml2_conf.ini
+               path: ml2_conf.ini
+{% endif %}
+        - name: {{ item.key }}-run
+          configMap:
+            name: {{ item.key }}-run
+            items:
+             - key: run.sh
+               path: run.sh
+        - name: openrc
+          configMap:
+            name: openrc
+            items:
+             - key: openrc
+               path: openrc
+{%endif%}
+      restartPolicy: Always

@@ -13,7 +13,12 @@
       - debug: var=result.stdout
 
       - name: Generate network yaml
-        template: src=../templates/kube-flannel.yml dest=/tmp/network.yml
+        template: src=../templates/network/kube-flannel.yml dest=/tmp/network.yml
+        when: network.addon_name == "flannel" 
+
+      - name: Generate network yaml
+        template: src=../templates/network/kube-calico.yml dest=/tmp/network.yml
+        when: network.addon_name == "calico" 
 
       - name: Install Network pod
         shell: kubectl apply -f /tmp/network.yml
@@ -33,4 +38,4 @@
         shell: kubeadm join --token={{ token }} "{{ hostvars['kubemaster1']['ansible_host'] }}"
 
       - name: Wait for setup networking
-        pause: seconds=10 
+        pause: seconds=20 
