@@ -1,0 +1,71 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ item.key }}
+  namespace: {{ namespace }}
+spec:
+  template:
+    metadata:
+      name: {{ item.key }}
+{% if item.key == 'keystone' %}
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "wait-for-keystone",
+            "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
+            "imagePullPolicy": "Always",
+            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.keystone.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+          }
+        ]'
+{% endif %}
+{% if item.key != 'keystone' and  item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "wait-for-keystone",
+            "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
+            "imagePullPolicy": "Always",
+            "command": ["/bin/bash", "-c", "export OS_PROJECT_DOMAIN_NAME={{ services.keystone.project_domain}};export OS_USER_DOMAIN_NAME={{ services.keystone.user_domain}};export OS_PROJECT_NAME={{ services.keystone.project_name }};export OS_USERNAME={{ services.keystone.user }};export OS_PASSWORD={{ services.keystone.passwd }};export OS_AUTH_URL=http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:{{ services.keystone.ports.public.port }}/v{{ services.keystone.api_version}};export OS_IDENTITY_API_VERSION={{ services.keystone.api_version}};export OS_IMAGE_API_VERSION={{ services.keystone.image_version}}; echo \"waiting for Keystone endpoints to Come Up...\"; while true; do if [ \"`/usr/bin/openstack service list | /bin/grep keystone`\" -a \"`/usr/bin/openstack endpoint list | /bin/grep {{ services.keystone.type }}`\" -a \"`/usr/bin/openstack user list | /bin/grep {{ services.keystone.user }}`\" ];then exit 0; else echo \"Waiting.....\"; fi;done;"]
+          }
+        ]'
+{% endif %}
+    spec:
+      containers:
+      - name: {{ item.key }}
+        image: {{docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}
+{% if item.key == "keystone" %}
+        command: [ "/bin/bash", "-c", "/bin/bash /opt/endpoint/{{ item.key }}-endpoint.sh" ]
+        volumeMounts:
+         - mountPath: /opt/endpoint
+           name: {{ item.key }}-endpoint
+        env:
+          - name: OS_TOKEN
+            value: {{ item.value.admin_token }}
+          - name: OS_URL
+            value: http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:{{services.keystone.ports.admin.port }}/{{ services.keystone.path }}
+          - name: OS_IDENTITY_API_VERSION
+            value: "{{ services.keystone.api_version }}"
+{% else%}
+        command: [ "/bin/bash", "-c", "source /opt/openrc/openrc && /bin/bash /opt/endpoint/{{ item.key }}-endpoint.sh" ]
+        volumeMounts:
+         - mountPath: /opt/endpoint
+           name: {{ item.key }}-endpoint
+         - mountPath: /opt/openrc
+           name: openrc
+{% endif %}
+      volumes:
+        - name: {{ item.key }}-endpoint
+          configMap:
+            name: {{ item.key }}-endpoint
+            items:
+             - key: {{ item.key }}-endpoint.sh
+               path: {{ item.key }}-endpoint.sh
+{% if item.key != 'keystone' %}
+        - name: openrc
+          configMap:
+            name: openrc
+            items:
+             - key: openrc
+               path: openrc
+{% endif %}
+      restartPolicy: Never

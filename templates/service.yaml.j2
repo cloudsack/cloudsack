@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ item.value.svc_name }}
+  namespace: {{ namespace }}
+spec:
+  ports:
+{%for key in item.value.ports%}
+    - port: {{ item.value.ports[key]['port'] }}
+      name: {{ key }}
+      nodePort: {{ item.value.ports[key]['nodePort'] }}
+{%endfor%}
+  selector:
+    unit: {{ item.key }}
+  type : NodePort

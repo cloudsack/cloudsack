@@ -1,38 +1,42 @@
 namespace: default
 network: 
+   addon_name: flannel
    pod_network_cidr: 10.244.0.0/16
    svc_network_cidr: 10.96.0.0/12
 svc_dns_domain: pramati.com
 token: 7e575c.a7b1a66a75d07701 
+base_os: Ubuntu
 
 kube_nameserver: 10.96.0.10 
 host_nameserver: 192.168.1.10
 docker:
+  maintainer: "Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>"
+  registry_secure: False
   registry: labs.pramati.com:5000
   project: cloudsack
   base_image: mitaka_base
-  tag: v1
+  tag: 1.0
   images: [base, mysql, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift]
 
 services:
   mysql:
     name: mysql-controller 
     svc_name: mysql-svc
-    image: mitaka_mysql:v1
+    image: mitaka_mysql:1.0
     root_passwd: devops 
     root_host: "%"
     replica: 1
     cpu: 1
     memory: 1024Mi
     ports:
-      mysql:
+      public:
         port: 3306
         nodePort: 30010
   
   rabbitmq:
     name: rabbitmq-controller
     svc_name: rabbitmq-svc
-    image: mitaka_rabbitmq:v1
+    image: mitaka_rabbitmq:1.0
     user: openstack
     passwd: devops
     replica: 1
@@ -46,7 +50,7 @@ services:
   memcached: 
     name: memcached-controller
     svc_name: memcached-svc
-    image: mitaka_memcached:v1
+    image: mitaka_memcached:1.0
     replica: 1
     cpu: 1
     memory: 1024Mi
@@ -58,7 +62,7 @@ services:
   keystone:
     name: identity-controller
     svc_name: identity-svc
-    image: mitaka_keystone:v1
+    image: mitaka_keystone:1.0
     replica: 3
     cpu: 1
     memory: 1024Mi
@@ -69,17 +73,25 @@ services:
       admin:
         port: 35357
         nodePort: 30002
+    db: keystone 
     db_user: keystone 
     db_pass: devops
     admin_token: e774988772b03e1ea60f
-    admin_user: admin
-    admin_pass: devops
+    user: admin
+    passwd: devops
     region: ImagineLabs
+    api_version: 3
+    image_version: 2
+    project_domain: default
+    project_name: admin
+    user_domain: default
+    path: v3
+    type: identity
   
   glance:
     name: glance-controller
     svc_name: glance-svc
-    image: mitaka_glance:v1
+    image: mitaka_glance:1.0
     replica: 3
     cpu: 1
     memory: 1024Mi
@@ -92,13 +104,16 @@ services:
         nodePort: 30004
     user: glance
     passwd: devops
+    db: glance
     db_user: glance 
     db_pass: devops
+    project_name: service
+    type: image
   
   nova:
     name: nova-controller
     svc_name: compute-svc
-    image: mitaka_nova:v1
+    image: mitaka_nova:1.0
     replica: 3
     cpu: 1
     memory: 1024Mi
@@ -117,14 +132,18 @@ services:
         nodePort: 30008
     user: nova
     passwd: devops
+    db: nova
     db_user: nova
     db_pass: devops
     metadata_secret: openstack
+    project_name: service
+    path: v2.1/%(tenant_id)s
+    type: compute
   
   neutron:
     name: neutron-controller
     svc_name: neutron-svc
-    image: mitaka_neutron-selfservice:v1
+    image: mitaka_neutron-selfservice:1.0
     replica: 3
     cpu: 1
     memory: 1024Mi
@@ -134,6 +153,21 @@ services:
         nodePort: 30009
     user: neutron
     passwd: devops
+    db: neutron
     db_user: neutron
     db_pass: devops
     providor_interface: eth0
+    project_name: service
+    type: network
+
+  horizon:
+    name: horizon-controller 
+    svc_name: horizon-svc
+    image: mitaka_horizon:1.0
+    replica: 1
+    cpu: 1
+    memory: 1024Mi
+    ports:
+      public:
+        port: 80
+        nodePort: 30013

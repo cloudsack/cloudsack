@@ -13,3 +13,10 @@
       - kubectl
       - kubernetes-cni
       - docker.io
+
+  - name: Update /etc/default/docker
+    lineinfile: dest=/etc/default/docker  line="DOCKER_OPTS=\"--insecure-registry {{ docker.registry }}\"" state=present
+    when: not docker.registry_secure
+
+  - name: restart docker
+    service: name=docker state=restarted

@@ -1,0 +1,8 @@
+export OS_PROJECT_DOMAIN_NAME={{ services.keystone.project_domain }}
+export OS_USER_DOMAIN_NAME={{ services.keystone.user_domain }}
+export OS_PROJECT_NAME={{ services.keystone.project_name }}
+export OS_USERNAME={{ services.keystone.user }}
+export OS_PASSWORD={{ services.keystone.passwd }}
+export OS_AUTH_URL=http://{{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}:{{services.keystone.ports.admin.port }}/{{ services.keystone.path }}
+export OS_IDENTITY_API_VERSION={{ services.keystone.api_version }}
+export OS_IMAGE_API_VERSION={{ services.keystone.image_version }}
