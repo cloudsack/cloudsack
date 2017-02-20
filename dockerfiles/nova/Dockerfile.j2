@@ -1,14 +1,8 @@
 FROM {{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}
-MAINTAINER Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>
+MAINTAINER {{ docker.maintainer }}
 
 RUN apt-get update && apt-get -y install nova-api nova-conductor nova-consoleauth nova-novncproxy nova-scheduler
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 8773 8774 8775
-
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
-
-CMD ["/run.sh"]
-
