@@ -28,7 +28,7 @@
         - name: generate endpoint.sh 
           template: src=../templates/create-endpoint.sh.j2 dest=/tmp/{{ item.key }}/{{ item.key }}-endpoint.sh
           with_dict: "{{ services }}"
-          when: item.key in components
+          when: item.key != "mysql" and item.key != "rabbitmq" and item.key != "horizon" and item.key != "memcached" and item.key in components
           ignore_errors: true
 
         - name: Generate keystone config
@@ -117,6 +117,6 @@
 
         - set_fact: kind=Replicas
         - name: generate Replicas file
-          template: src=../templates/deployment.j2 dest=/tmp/{{ item.key }}-replica.yaml
+          template: src=../templates/deployment.yaml.j2 dest=/tmp/{{ item.key }}-replica.yaml
           with_dict: "{{ services }}"
           when: item.key in components

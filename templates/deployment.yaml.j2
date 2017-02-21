@@ -32,7 +32,7 @@ spec:
             "name": "wait-for-keystone",
             "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
             "imagePullPolicy": "Always",
-            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; {% if item.key == 'neutron' %} echo  \"nameserver {{kube_nameserver}}\" > /etc/resolv.conf;{{ endif }} while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.keystone.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; {% if item.key == 'neutron' %} echo -e \"nameserver {{kube_nameserver}} \n nameserver {{host_nameserver}}\" > /etc/resolv.conf;{% endif %} while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.keystone.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
           }
         ]'
 {% endif %}

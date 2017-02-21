@@ -4,7 +4,7 @@
     connection: local
     become: yes
     tasks:
-      - set_fact: components="base, mysql, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift"
+      - set_fact: components="base, mysql, rabbitmq, memcached, keystone, glance, nova, neutron, horizon, cinder, heat, swift"
         when: components is not defined
 
       - name: Generate Dockerfiles
