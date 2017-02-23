@@ -21,7 +21,7 @@ spec:
             "name": "wait-for-mysql",
             "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
             "imagePullPolicy": "Always",
-            "command": ["/bin/bash", "-c", "echo \"waiting for Mysql to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.mysql.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+            "command": ["/bin/bash", "-c", "echo \"waiting for Mysql to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.mysql.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\";sleep 2; fi;done;"]
           }
         ]'
 {% endif %}
@@ -32,7 +32,7 @@ spec:
             "name": "wait-for-keystone",
             "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
             "imagePullPolicy": "Always",
-            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; {% if item.key == 'neutron' %} echo -e \"nameserver {{kube_nameserver}} \n nameserver {{host_nameserver}}\" > /etc/resolv.conf;{% endif %} while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.keystone.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; {% if item.key == 'neutron' %} echo -e \"nameserver {{kube_nameserver}} \n nameserver {{host_nameserver}}\" > /etc/resolv.conf;{% endif %} while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.keystone.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; sleep 5; fi;done;"]
           }
         ]'
 {% endif %}
@@ -47,7 +47,7 @@ spec:
               cpu: {{ item.value.cpu }}
           image: {{docker.registry }}/{{ docker.project }}/{{ item.value.image }}
           name: {{ item.value.name }}
-{%if item.key == 'nova' or item.key == 'neutron'%}
+{%if item.key == 'nova' or item.key == 'neutron' or item.key == 'cinder' %}
           securityContext:
             privileged: true
 {%endif%}
@@ -184,6 +184,12 @@ spec:
            - mountPath: /opt/neutron-metadata
              name: neutron-metadata
 {% endif%}
+{% if item.key == 'cinder' %}
+           - mountPath: /opt/cinder-conf
+             name: cinder-conf
+           - mountPath: /opt/cinder-glusterfs
+             name: cinder-glusterfs
+{% endif%}
            - mountPath: /opt/run
              name: {{item.key}}-run
            - mountPath: /opt/openrc
@@ -262,6 +268,28 @@ spec:
             items:
              - key: ml2_conf.ini
                path: ml2_conf.ini
+{% endif %}
+{% if item.key == 'heat' %}
+        - name: heat-conf
+          configMap:
+            name: heat-conf
+            items:
+             - key: heat.conf
+               path: heat.conf
+{% endif %}
+{% if item.key == 'cinder' %}
+        - name: cinder-conf
+          configMap:
+            name: cinder-conf
+            items:
+             - key: cinder.conf
+               path: cinder.conf
+        - name: cinder-glusterfs
+          configMap:
+            name: cinder-glusterfs
+            items:
+             - key: glusterfs_shares
+               path: glusterfs_shares
 {% endif %}
         - name: {{ item.key }}-run
           configMap:

@@ -3,32 +3,51 @@
       hosts: kubemaster[0]
       tasks:
         - set_fact: kind=Deployment
-        - set_fact: components="nova, neutron, glance, keystone, rabbitmq, mysql, memcached, horizon"
+          tags:
+            - heat
+            - cinder
+        - set_fact: components="nova, neutron, glance, keystone, rabbitmq, mysql, memcached, horizon, heat, cinder"
           when: components is not defined
 
         - name: Creating /tmp/{{ item.key }} directory
           file: path=/tmp/{{ item.key }} state=directory mode=0755
           with_dict: "{{ services }}"
+          when: item.key in components
+          tags:
+            - heat
+            - cinder
 
         - name: generate service file 
           template: src=../templates/service.yaml.j2 dest=/tmp/{{ item.key }}/{{ item.key }}-svc.yaml
           with_dict: "{{ services }}"
           when: item.key in components
+          tags:
+            - heat
+            - cinder
 
         - name: generate Deployment file 
           template: src=../templates/deployment.yaml.j2 dest=/tmp/{{ item.key }}/{{ item.key }}.yaml
           with_dict: "{{ services }}"
           when: item.key in components
+          tags:
+            - heat
+            - cinder
 
         - name: generate jobs file 
           template: src=../templates/create-endpoint-job.yaml.j2 dest=/tmp/{{ item.key }}/{{ item.key }}-job.yaml
           with_dict: "{{ services }}"
           when: item.key in components
+          tags:
+            - heat
+            - cinder
 
         - name: generate endpoint.sh 
           template: src=../templates/create-endpoint.sh.j2 dest=/tmp/{{ item.key }}/{{ item.key }}-endpoint.sh
           with_dict: "{{ services }}"
           when: item.key != "mysql" and item.key != "rabbitmq" and item.key != "horizon" and item.key != "memcached" and item.key in components
+          tags:
+            - heat
+            - cinder
           ignore_errors: true
 
         - name: Generate keystone config
@@ -38,6 +57,8 @@
             - { src: keystone/apache2.conf, dest: apache2.conf }
             - { src: keystone/run.sh, dest: run.sh }
             - { src: openrc.j2, dest: openrc }
+          tags:
+            - configmap
 
         - name: Create configmap for keystone config
           shell: kubectl --namespace={{ namespace }} create configmap {{ item.key }} --from-file=/tmp/keystone/{{ item.value }}
@@ -47,7 +68,8 @@
             - { key: apache-conf, value: apache2.conf }
             - { key: keystone-run, value: run.sh }
             - { key: openrc, value: openrc }
-          ignore_errors: true
+          tags:
+            - configmap
 
         - name: Generate glance config
           template: src=../templates/glance/{{ item.src }} dest=/tmp/glance/{{ item.dest }}
@@ -55,6 +77,8 @@
             - { src: glance-api.conf, dest: glance-api.conf }
             - { src: glance-registry.conf, dest: glance-registry.conf }
             - { src: run.sh, dest: run.sh }
+          tags:
+            - configmap
 
         - name: Create configmap for glance config
           shell: kubectl --namespace={{ namespace }} create configmap {{ item.key }} --from-file=/tmp/glance/{{ item.value }}
@@ -63,6 +87,8 @@
             - { key: glance-api, value: glance-api.conf }
             - { key: glance-registry, value: glance-registry.conf }
             - { key: glance-run, value: run.sh }
+          tags:
+            - configmap
 
 
         - name: Generate nova config
@@ -70,6 +96,8 @@
           with_items:
             - { src: nova.conf, dest: nova.conf }
             - { src: run.sh, dest: run.sh }
+          tags:
+            - configmap
 
         - name: Create configmap for nova config
           shell: kubectl --namespace={{ namespace }} create configmap {{ item.key }} --from-file=/tmp/nova/{{ item.value }}
@@ -77,6 +105,8 @@
             - { key: nova-endpoint, value: nova-endpoint.sh }
             - { key: nova-conf, value: nova.conf }
             - { key: nova-run, value: run.sh }
+          tags:
+            - configmap
 
 
         - name: Generate neutron config
@@ -89,6 +119,8 @@
             - { src: metadata_agent.ini, dest: metadata_agent.ini }
             - { src: ml2_conf.ini, dest: ml2_conf.ini }
             - { src: run.sh, dest: run.sh }
+          tags:
+            - configmap
 
         - name: Create configmap for neutron config
           shell: kubectl --namespace={{ namespace }} create configmap {{ item.key }} --from-file=/tmp/neutron/{{ item.value }}
@@ -101,22 +133,74 @@
             - { key: neutron-ml2, value: ml2_conf.ini }
             - { key: neutron-conf, value: neutron.conf }
             - { key: neutron-run, value: run.sh }
+          tags:
+            - configmap
+
+        - name: Generate heat config
+          template: src=../templates/heat/{{ item.src }} dest=/tmp/heat/{{ item.dest }}
+          with_items:
+            - { src: heat.conf, dest: heat.conf }
+            - { src: run.sh, dest: run.sh }
+          tags:
+            - configmap
+            - heat
+
+        - name: Create configmap for heat config
+          shell: kubectl --namespace={{ namespace }} create configmap {{ item.key }} --from-file=/tmp/heat/{{ item.value }}
+          with_items:
+            - { key: heat-endpoint, value: heat-endpoint.sh }
+            - { key: heat-conf, value: heat.conf }
+            - { key: heat-run, value: run.sh }
+          tags:
+            - configmap
+            - heat
+
+        - name: Generate cinder config
+          template: src=../templates/cinder/{{ item.src }} dest=/tmp/cinder/{{ item.dest }}
+          with_items:
+            - { src: cinder.conf, dest: cinder.conf }
+            - { src: glusterfs_shares, dest: glusterfs_shares }
+            - { src: run.sh, dest: run.sh }
+          tags:
+            - configmap
+            - cinder
+
+        - name: Create configmap for cinder config
+          shell: kubectl --namespace={{ namespace }} create configmap {{ item.key }} --from-file=/tmp/cinder/{{ item.value }}
+          with_items: 
+            - { key: cinder-endpoint, value: cinder-endpoint.sh }
+            - { key: cinder-conf, value: cinder.conf }
+            - { key: cinder-glusterfs, value: glusterfs_shares }
+            - { key: cinder-run, value: run.sh }
+          tags:
+            - cinder
+            - configmap
 
         - name: Creating service
           shell: kubectl create -f /tmp/{{ item.key }}/{{ item.key }}-svc.yaml
           with_dict: "{{ services }}"
+          when: item.key in components
+          tags:
+            - heat
 
         - name: Deploy services
           shell: kubectl create -f /tmp/{{ item.key }}/{{ item.key }}.yaml
           with_dict: "{{ services }}"
+          when: item.key in components
+          tags:
+            - heat
 
-        - name: Deploy {{ item.key }}
+        - name: Create endpoints
           shell: kubectl create -f /tmp/{{ item.key }}/{{ item.key }}-job.yaml
           with_dict: "{{ services }}"
           when: item.key != "mysql" and item.key != "rabbitmq" and item.key != "horizon" and item.key != "memcached" and item.key in components
+          tags:
+            - heat
 
         - set_fact: kind=Replicas
         - name: generate Replicas file
           template: src=../templates/deployment.yaml.j2 dest=/tmp/{{ item.key }}-replica.yaml
           with_dict: "{{ services }}"
           when: item.key in components
+          tags:
+            - heat

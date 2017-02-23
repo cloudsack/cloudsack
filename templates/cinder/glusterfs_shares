@@ -1,0 +1,1 @@
+{{ services.cinder.storage_backends.host }}:/{{ services.cinder.storage_backends.volume }}

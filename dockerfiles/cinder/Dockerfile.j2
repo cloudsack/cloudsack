@@ -1,7 +1,7 @@
 FROM {{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}
 MAINTAINER {{ docker.maintainer }}
 
-RUN apt-get update && apt-get -y install cinder-api cinder-scheduler cinder-volume nfs-common
+RUN apt-get update && apt-get -y install cinder-api cinder-scheduler cinder-volume glusterfs-client
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

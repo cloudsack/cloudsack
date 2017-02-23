@@ -3,25 +3,40 @@
 SERVICE={{ item.key }}
 TYPE={{ item.value.type }}
 USER={{ item.value.user }}
+{% if item.key == 'heat' or item.key == 'cinder' %}
+SERVICE2={{ item.value.user2 }}
+TYPE2={{ item.value.type2 }}
+URI_PATH2="/{{ item.value.path2 }}"
+{% endif %}
+{% if item.key == 'heat' %}
+DOMAIN={{ item.value.domain }}
+DOMAIN_PASSWD={{ item.value.domain_passwd }}
+{% endif %}
 PASSWD={{ item.value.passwd }}
 PROJECT_NAME={{ item.value.project_name }}
 REGION={{ services.keystone.region }}
 {% if item.value.path is defined %}
-path="/{{ item.value.path }}"
+URI_PATH="/{{ item.value.path }}"
 {% else %}
-path=""
+URI_PATH=""
 {% endif %}
 
 if [ ! "`/usr/bin/openstack service list | /bin/grep ${TYPE}`" ]
 then
-	/usr/bin/openstack service create --name $SERVICE  ${TYPE}
+	/usr/bin/openstack service create --name ${SERVICE}  ${TYPE}
 fi
+{% if item.key == 'heat' or item.key == 'cinder' %}
+if [ ! "`/usr/bin/openstack service list | /bin/grep ${TYPE2}`" ]
+then
+	/usr/bin/openstack service create --name ${SERVICE2}  ${TYPE2}
+fi
+{% endif %}
 {% if item.key == 'keystone' %}
 if [ ! "`/usr/bin/openstack endpoint list | /bin/grep ${TYPE}`" ]
 then
-	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.public.port }}${path}
-	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.public.port }}${path}
-	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.admin.port }}${path}
+	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.public.port }}${URI_PATH}
+	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.public.port }}${URI_PATH}
+	/usr/bin/openstack endpoint create --region ${REGION} ${TYPE} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.admin.port }}${URI_PATH}
 fi
 if [ ! "`/usr/bin/openstack domain list`" ]
 then
@@ -42,15 +57,49 @@ fi
 {%else%}
 if [ ! "`/usr/bin/openstack endpoint list | /bin/grep ${TYPE}`" ]
 then
-        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${path}
-        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${path}
-        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${path}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${URI_PATH}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${URI_PATH}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:{{item.value.ports.api.port }}${URI_PATH}
 fi
 {% endif %}
 
+{% if item.key == 'heat' or item.key == 'cinder' %}
+{% if item.key == 'heat' %}
+PORT={{ item.value.ports.cfn.port }}
+{% else %}
+PORT={{ item.value.ports.api.port }}
+{% endif %}
+if [ ! "`/usr/bin/openstack endpoint list | /bin/grep ${TYPE2}`" ]
+then
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE2} public http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:${PORT}${URI_PATH2}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE2} internal http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:${PORT}${URI_PATH2}
+        /usr/bin/openstack endpoint create --region ${REGION} ${TYPE2} admin http://{{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}:${PORT}${URI_PATH2}
+fi
+{% endif %}
 if [ ! "`/usr/bin/openstack user list | /bin/grep ${USER}`" ]
 then
 	/usr/bin/openstack user create --domain default --password ${PASSWD} ${USER}
 fi
 
 /usr/bin/openstack role add --project ${PROJECT_NAME} --user ${USER} admin
+
+{% if item.key == 'heat' %}
+if [ ! "`/usr/bin/openstack domain list | /bin/grep ${USER}`" ]
+then
+	/usr/bin/openstack domain create --description "Stack projects and users" ${DOMAIN}
+fi
+if [ ! "`/usr/bin/openstack user list | /bin/grep ${USER}_domain_admin`" ]
+then
+        /usr/bin/openstack user create --domain ${DOMAIN} --password ${DOMAIN_PASSWD} ${USER}_domain_admin
+        /usr/bin/openstack role add --domain ${DOMAIN} --user-domain ${DOMAIN} --user ${USER}_domain_admin admin
+fi
+if [ ! "`/usr/bin/openstack role list | /bin/grep ${USER}_stack_owner`" ]
+then
+        /usr/bin/openstack role create ${USER}_stack_owner
+        /usr/bin/openstack role add --project {{ services.keystone.project_name }} --user {{ services.keystone.user }} ${USER}_stack_owner
+fi
+if [ ! "`/usr/bin/openstack role list | /bin/grep ${USER}_stack_user`" ]
+then
+        /usr/bin/openstack role create ${USER}_stack_user
+fi
+{% endif %}
