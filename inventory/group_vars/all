@@ -16,23 +16,52 @@ docker:
   project: cloudsack
   base_image: mitaka_base
   tag: 1.0
-  images: [base, mysql, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift]
+  images: [base, galera, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift]
 
-services:
-  mysql:
-    name: mysql-controller 
-    svc_name: mysql-svc
-    image: mitaka_mysql:1.0
-    root_passwd: devops 
+mariadb_cluster:
+  mariadb:
+    svc_name: mariadb-svc
+    unit: mariadb
+    ports:
+      mysql:
+        port: 3306
+      replication:
+        port: 4567
+      replicationudp:
+        port: 4567
+        protocol: UDP
+      ist:
+        port: 4568
+      sst:
+        port: 4444
+    image: galera
+    root_passwd: devops
     root_host: "%"
-    replica: 1
     cpu: 1
     memory: 1024Mi
-    ports:
-      public:
-        port: 3306
-        nodePort: 30010
-  
+
+  mariadb1:
+    name: mariadb-controller1
+    svc_name: mariadb-svc1
+    sub_unit: mariadb1
+    pvc_name: mysql1-pvc
+
+  mariadb2:
+    name: mariadb-controller2
+    svc_name: mariadb-svc2
+    sub_unit: mariadb2
+    pvc_name: mysql2-pvc
+
+  mariadb3:
+    name: mariadb-controller3
+    svc_name: mariadb-svc3
+    sub_unit: mariadb3
+    pvc_name: mysql3-pvc
+
+services:
+  mariadb:
+    svc_name: mariadb-svc
+
   rabbitmq:
     name: rabbitmq-controller
     svc_name: rabbitmq-svc

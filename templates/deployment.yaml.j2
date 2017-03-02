@@ -18,14 +18,14 @@ spec:
       annotations:
         pod.beta.kubernetes.io/init-containers: '[
           {
-            "name": "wait-for-mysql",
+            "name": "wait-for-mariadb",
             "image": "{{ docker.registry }}/{{ docker.project }}/{{ docker.base_image }}:{{ docker.tag }}",
             "imagePullPolicy": "Always",
-            "command": ["/bin/bash", "-c", "echo \"waiting for Mysql to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.mysql.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\";sleep 2; fi;done;"]
+            "command": ["/bin/bash", "-c", "echo \"waiting for Mysql to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ svc_dns_domain }}/api/v1/namespaces/{{ namespace }}/endpoints/{{ services.mariadb.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\";sleep 2; fi;done;"]
           }
         ]'
 {% endif %}
-{% if item.key != 'keystone' and  item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+{% if item.key != 'keystone' and  item.key != 'mariadb' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
       annotations:
         pod.beta.kubernetes.io/init-containers: '[
           {
@@ -55,7 +55,7 @@ spec:
 {%for key in item.value.ports%}
           - containerPort: {{ item.value.ports[key]['port'] }}
 {%endfor%}
-{% if item.key == 'mysql' or item.key == 'rabbitmq' or item.key == 'memcached' or item.key == 'horizon' or item.key == 'keystone' %}
+{% if item.key == 'rabbitmq' or item.key == 'memcached' or item.key == 'horizon' or item.key == 'keystone' %}
           livenessProbe:
             tcpSocket:
               port: {{ item.value.ports.public.port }}
@@ -77,7 +77,7 @@ spec:
 {%endif%}
           env:
             - name: MYSQL_HOST
-              value: {{ services.mysql.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
+              value: {{ services.mariadb.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
             - name: KEYSTONE_HOST
               value: {{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }} 
             - name: MEMCACHED_HOST
@@ -106,12 +106,6 @@ spec:
 {%endif%}
             - name: REGION
               value: {{ services.keystone.region }}
-            - name: MYSQL_ROOT_PASSWORD
-              value: {{ services.mysql.root_passwd }}
-{% if item.key == 'mysql' %}
-            - name: MYSQL_ROOT_HOST
-              value: "{{ services.mysql.root_host }}"
-{%endif%}
 {% if item.value.db_user is defined %}
             - name: {{ item.key | upper }}_DB
               value: {{ item.value.db }}
@@ -120,7 +114,7 @@ spec:
             - name: {{ item.key | upper }}_DBPASS
               value: {{ item.value.db_pass }}
 {% endif %}
-{% if item.key != 'keystone' and  item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+{% if item.key != 'keystone' and  item.key != 'mariadb' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
             - name: {{ item.key | upper }}_USER
               value: {{ item.value.user }}
             - name: {{ item.key | upper }}_PASSWORD
@@ -151,7 +145,7 @@ spec:
             - name: HOST_NAMESERVER
               value: {{ host_nameserver }}
 {%endif%}
-{% if item.key != 'mysql' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
+{% if item.key != 'mariadb' and item.key != 'rabbitmq' and item.key != 'memcached' and item.key != 'horizon' %}
           command: [ "/bin/bash", "-c", "/bin/bash /opt/run/run.sh" ]
           volumeMounts:
 {% if item.key == 'keystone' %}
