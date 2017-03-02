@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ item.value.svc_name }}
+  namespace: {{ namespace }}
+spec:
+  ports:
+{%for key in mariadb_cluster.mariadb.ports%}
+    - port: {{ mariadb_cluster.mariadb.ports[key]['port'] }}
+      name: {{ key }}
+{% if mariadb_cluster.mariadb.ports[key]['protocol'] is defined %}
+      protocol: {{ mariadb_cluster.mariadb.ports[key]['protocol'] }}
+{% endif %}
+{%endfor%}
+  selector:
+{% if item.key == 'mariadb' %}
+    unit: {{ item.value.unit }}
+{% else %}
+    sub-unit: {{ item.value.sub_unit }}
+{% endif %}

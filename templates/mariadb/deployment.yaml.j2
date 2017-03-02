@@ -1,0 +1,52 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ item.value.name }}
+  namespace: {{ namespace }}
+spec:
+  template:
+    metadata:
+      labels:
+        unit: {{ mariadb_cluster.mariadb.unit }}
+        sub-unit: {{ item.value.sub_unit }}
+    spec:
+      containers:
+        - resources:
+            limits: 
+              memory: {{ mariadb_cluster.mariadb.memory }}
+              cpu: {{ mariadb_cluster.mariadb.cpu }}
+          image: {{docker.registry }}/{{ docker.project }}/{{ mariadb_cluster.mariadb.image }}
+          name: {{ item.value.name }}
+          ports:
+{%for key in mariadb_cluster.mariadb.ports%}
+          - containerPort: {{ mariadb_cluster.mariadb.ports[key]['port'] }}
+{% if mariadb_cluster.mariadb.ports[key]['protocol'] is defined %}
+            protocol: {{ mariadb_cluster.mariadb.ports[key]['protocol'] }}
+{% endif %}
+{%endfor%}
+          args:
+            - mysqld
+{% if item.key == 'mariadb1' %}
+            - --wsrep-new-cluster
+{% endif %}
+          env:
+            - name: WSREP_NODE_ADDRESS
+              value: {{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}
+            - name: WSREP_CLUSTER_ADDRESS
+              value: gcomm://{% for key in mariadb_cluster %}{% if key != 'mariadb' %}{{ mariadb_cluster[key]['svc_name'] }}.{{ namespace }}.svc.{{ svc_dns_domain }}{% if not loop.last %},{%endif%}{%endif%}{%endfor%}
+
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ mariadb_cluster.mariadb.root_passwd }}
+            - name: MYSQL_ROOT_HOST
+              value: "{{ mariadb_cluster.mariadb.root_host }}"
+            - name: WSREP_NODE_NAME
+              value: {{ item.value.svc_name }}.{{ namespace }}.svc.{{ svc_dns_domain }}
+          volumeMounts:
+           - mountPath: /var/lib/mysql
+             name: gluster-pvc
+      volumes:
+        - name: gluster-pvc
+          persistentVolumeClaim:
+            claimName: {{ item.value.pvc_name }}
+      restartPolicy: Always
