@@ -1,0 +1,11 @@
+FROM {{ base_fqin }}
+MAINTAINER Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>
+
+RUN apt-get update && apt-get -y install memcached
+
+EXPOSE 11211
+
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+
+CMD ["/run.sh"]

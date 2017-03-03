@@ -1,0 +1,83 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ item.value.name }}
+  namespace: {{ namespace }}
+spec:
+{% if kind == "Replicas" %}
+  replicas: {{ item.value.replica }}
+{% else %}
+  replicas: 1
+{% endif %}
+  template:
+    metadata:
+      labels:
+        unit: {{ item.key }}
+    spec:
+      containers:
+        - resources:
+            limits:
+              memory: {{ item.value.memory }}
+              cpu: {{ item.value.cpu }}
+          image: {{docker.registry }}/{{ docker.project }}/{{ item.value.image }}
+          name: {{ item.value.name }}
+          ports:
+{%for key in item.value.ports%}
+          - containerPort: {{ item.value.ports[key]['port'] }}
+{%endfor%}
+          livenessProbe:
+            tcpSocket:
+              port: {{ item.value.ports.public.port }}
+            initialDelaySeconds: 120
+          readinessProbe:
+            tcpSocket:
+              port: {{ item.value.ports.public.port }}
+            initialDelaySeconds: 60
+          env:
+            - name: MYSQL_HOST
+              value: {{ services.mysql.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: KEYSTONE_HOST
+              value: {{ services.keystone.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: MEMCACHED_HOST
+              value: {{ services.memcached.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: GLANCE_HOST
+              value: {{ services.glance.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: NEUTRON_HOST
+              value: {{ services.neutron.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: NOVA_HOST
+              value: {{ services.nova.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: RABBITMQ_HOST
+              value: {{ services.rabbitmq.svc_name }}.{{namespace }}.svc.{{ svc_dns_domain }}
+            - name: ADMIN_USER
+              value: {{ services.keystone.user }}
+            - name: ADMIN_PASSWORD
+              value: {{ services.keystone.passwd }}
+            - name: REGION
+              value: {{ services.keystone.region }}
+            - name: MYSQL_ROOT_PASSWORD
+              value: {{ services.mysql.root_passwd }}
+            - name: MYSQL_ROOT_HOST
+              value: "{{ services.mysql.root_host }}"
+            - name: RABBITMQ_USER
+              value: {{ services.rabbitmq.user }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ services.rabbitmq.passwd }}
+           - mountPath: /opt/run
+             name: {{item.key}}-run
+           - mountPath: /opt/openrc
+             name: openrc
+      volumes:
+        - name: {{ item.key }}-run
+          configMap:
+            name: {{ item.key }}-run
+            items:
+             - key: run.sh
+               path: run.sh
+        - name: openrc
+          configMap:
+            name: openrc
+            items:
+             - key: openrc
+               path: openrc
+      restartPolicy: Always

@@ -1,0 +1,8 @@
+FROM {{ base_fqin }}
+MAINTAINER Somesh Yadav <yadavsms@gmail.com>, Gurpreet Singh <gpsingh1991@yahoo.co.in>
+
+RUN apt-get update && apt-get -y install heat-api heat-api-cfn heat-engine
+
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+EXPOSE 9191 9292
