@@ -23,7 +23,7 @@ class TestBuild(object):
                 'base_image': 'base_image',
             },
         }
-        args = Namespace(config=config, image_names=None)
+        args = Namespace(config=config, component_names=None)
         build_mock = mocker.MagicMock()
         director_mock = mocker.MagicMock(return_value=build_mock)
         component_mock = mocker.MagicMock(return_value='component')
@@ -43,16 +43,16 @@ class TestBuild(object):
 
     def test_prepare(self, setup):
         command = setup['command']
-        command.perform()
-        assert command.args.image_names == const.COMPONENTS
-        command.args.image_names = [1, 2, 3]
-        command.perform()
-        assert command.args.image_names == [1, 2, 3]
+        command()
+        assert command.args.component_names == const.COMPONENTS
+        command.args.component_names = [1, 2, 3]
+        command()
+        assert command.args.component_names == [1, 2, 3]
 
     def test_component_factory(self, setup, mocker):
         command = setup['command']
         component_factory_mock = setup['component_factory_mock']
-        command.perform()
+        command()
         calls = [
             mocker.call(component_name) for component_name in const.COMPONENTS]
         component_factory_mock.assert_has_calls(calls)
@@ -61,7 +61,7 @@ class TestBuild(object):
         config = setup['config']
         command = setup['command']
         component_mock = setup['component_mock']
-        command.perform()
+        command()
         calls = [
             mocker.call(config) for _ in const.COMPONENTS]
         component_mock.assert_has_calls(calls)
@@ -69,11 +69,11 @@ class TestBuild(object):
     def test_director(self, setup, mocker):
         command = setup['command']
         director_mock = setup['director_mock']
-        command.perform()
+        command()
         director_mock.assert_any_call('component')
 
     def test_build(self, setup, mocker):
         command = setup['command']
         build_mock = setup['build_mock']
-        command.perform()
+        command()
         build_mock.build.assert_called()

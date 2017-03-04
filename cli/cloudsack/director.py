@@ -17,3 +17,6 @@ class Director(object):
             self.component.build_context,
         )
         image_builder.build()
+
+    def launch(self):
+        pass

@@ -8,24 +8,38 @@ from cloudsack.director import Director
 from cloudsack.components import component_factory
 
 
-class Build(object):
+class Base(object):
 
     def __init__(self, args):
         self.args = args
 
-    def __prepare(self):
-        """Checks input and prepare appropriate input."""
-        if not self.args.image_names:
-            self.args.image_names = const.COMPONENTS
+    def __call__(self):
+        self.prepare()
+        self.perform()
 
-    def __build(self):
-        for image_name in self.args.image_names:
-            component_class = component_factory(image_name)
+    def prepare(self):
+        """Checks input and prepare appropriate input."""
+        if not self.args.component_names:
+            self.args.component_names = const.COMPONENTS
+
+
+class Build(Base):
+
+    def perform(self):
+        for component_name in self.args.component_names:
+            component_class = component_factory(component_name)
             component = component_class(self.args.config)
             director = Director(component)
             director.build()
-            print('Successfully built: {}'.format(image_name))
+            print('Successfully built: {}'.format(component_name))
+
+
+class Launch(Base):
 
     def perform(self):
-        self.__prepare()
-        self.__build()
+        for component_name in self.args.component_names:
+            component_class = component_factory(component_name)
+            component = component_class(self.args.config)
+            director = Director(component)
+            director.launch()
+            print('Successfully launched: {}'.format(component_name))

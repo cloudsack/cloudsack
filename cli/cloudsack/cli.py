@@ -22,13 +22,29 @@ def main():
         help='A yaml file with configuration for build.',
     )
     build_img_parser.add_argument(
-        '--images',
+        '--components',
         nargs='+',
         type=str,
-        dest='image_names',
-        help='Takes space separated image names.',
+        dest='component_names',
+        help='Takes space separated component names.',
     )
     build_img_parser.set_defaults(task=commands.Build)
 
+    launch_parser = subparser.add_parser(
+        'launch', help='Launch components in containers.')
+    launch_parser.add_argument(
+        'config',
+        type=utils.yaml_file,
+        help='A yaml file with configuration to launch.',
+    )
+    launch_parser.add_argument(
+        '--components',
+        nargs='+',
+        type=str,
+        dest='component_names',
+        help='Takes space separated component names.',
+    )
+    launch_parser.set_defaults(task=commands.Launch)
+
     args = parser.parse_args(sys.argv[1:])
-    args.task(args).perform()
+    args.task(args)()
