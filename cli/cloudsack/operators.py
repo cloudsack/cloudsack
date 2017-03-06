@@ -87,8 +87,9 @@ class ImageBuilder(Operator):
         )
 
     def build(self):
+        template_path = '/Users/vamsis/projects/personal/cloudsack/cli/cloudsack/templates'
         source = os.path.join(
-            const.TEMPLATE_PATH, self.component_name, 'build_image')
+            template_path, self.component_name, 'build_image')
 
         with utils.make(self.get_arena(), src=source) as arena:
             self.render(arena)
@@ -104,8 +105,9 @@ class ImageBuilder(Operator):
 class ServiceCreator(Operator):
 
     dir_name = 'service_creation'
+    base_template_name = 'service'
 
-    def create(self):
+    def build(self):
         with utils.make(self.get_arena()) as arena:
             self.render(arena)
             # Call pykube to create service

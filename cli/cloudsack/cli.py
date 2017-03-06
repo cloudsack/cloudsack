@@ -29,6 +29,21 @@ def main():
         help='Takes space separated component names.',
     )
     build_img_parser.set_defaults(task=commands.Build)
+    launch_service_parser = subparser.add_parser(
+        'launch', help='Launch k8s services')
+    launch_service_parser.add_argument(
+        'config',
+        type=utils.yaml_file,
+        help='A yaml file with configuration for build.',
+    )
+    launch_service_parser.add_argument(
+        '--components',
+        nargs='+',
+        type=str,
+        dest='component_names',
+        help='Takes space separated component names.',
+    )
+    launch_service_parser.set_defaults(task=commands.Launch)
 
     launch_parser = subparser.add_parser(
         'launch', help='Launch components in containers.')
