@@ -33,6 +33,15 @@ class Base(object):
             'base_fqin': base_fqin,
         }
 
+    @property
+    def build_service_context(self):
+        service_config = self.config['services'][self.name]
+        service_config.update({
+            'namespace': self.config['namespace'],
+            'unit_name': self.name,
+        })
+        return service_config
+
 
 class Core(Base):
 

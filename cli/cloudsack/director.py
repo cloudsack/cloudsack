@@ -3,6 +3,7 @@
 
 
 from cloudsack.operators import ImageBuilder
+from cloudsack.operators import ServiceCreator
 
 
 class Director(object):
@@ -19,4 +20,8 @@ class Director(object):
         image_builder.build()
 
     def launch(self):
-        pass
+        service_builder = ServiceCreator(
+            self.component.name,
+            self.component.build_service_context,
+        )
+        service_builder.build()

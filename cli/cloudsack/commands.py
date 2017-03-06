@@ -34,12 +34,26 @@ class Build(Base):
             print('Successfully built: {}'.format(component_name))
 
 
-class Launch(Base):
+class Launch(object):
+
+    def __init__(self, args):
+        self.__prepare(args)
+
+    def __call__(self):
+        self.perform()
+
+    def __prepare(self, args):
+        """Checks input and prepare appropriate input."""
+        self.config = args.config
+        if args.component_names:
+            self.component_names = args.component_names
+        else:
+            self.component_names = const.COMPONENTS
 
     def perform(self):
-        for component_name in self.args.component_names:
+        for component_name in self.component_names:
             component_class = component_factory(component_name)
-            component = component_class(self.args.config)
+            component = component_class(self.config)
             director = Director(component)
             director.launch()
-            print('Successfully launched: {}'.format(component_name))
+            print('Successfully built: {}'.format(component_name))
