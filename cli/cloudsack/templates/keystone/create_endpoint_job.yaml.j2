@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ name }}
+  namespace: {{ globals.namespace }}
+spec:
+  template:
+    metadata:
+      name: {{ name }}
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "wait-for-keystone",
+            "image": "{{ base_fqin }}",
+            "imagePullPolicy": "Always",
+            "command": ["/bin/bash", "-c", "echo \"waiting for Keystone to Come Up...\"; while true; do endpoints=$(curl -v --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H \"Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)\" https://kubernetes.default.svc.{{ globals.svc_dns_domain }}/api/v1/namespaces/{{ globals.namespace }}/endpoints/{{ component.svc_name }} |jq -r \".subsets[].addresses | length\");if [ ! -z $endpoints ] && [ $endpoints -gt 0 ]; then exit 0; else echo \"Waiting.....\"; fi;done;"]
+          }
+        ]'
+    spec:
+      containers:
+      - name: {{ name }}
+        image: {{ base_fqin }}
+        command: [ "/bin/bash", "-c", "/bin/bash /opt/endpoint/{{ name }}-endpoint.sh" ]
+        volumeMounts:
+         - mountPath: /opt/endpoint
+           name: {{ name }}-endpoint
+        env:
+          - name: OS_TOKEN
+            value: {{ component.admin_token }}
+          - name: OS_URL
+            {# TODO: Can be a simple config #}
+            value: http://{{ component.svc_name }}.{{ globals.namespace }}.svc.{{ globals.svc_dns_domain }}:{{ component.ports.admin.port }}/{{ component.path }}
+          - name: OS_IDENTITY_API_VERSION
+            value: "{{ component.api_version }}"
+      volumes:
+        - name: {{ name }}-endpoint
+          configMap:
+            name: {{ name }}-endpoint
+            items:
+             - key: {{ name }}-endpoint.sh
+               path: {{ name }}-endpoint.sh
+      restartPolicy: Never

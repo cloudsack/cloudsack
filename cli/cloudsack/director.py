@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-from cloudsack.operators import ImageBuilder
-from cloudsack.operators import ServiceCreator
+from cloudsack import operators
 
 
 class Director(object):
@@ -12,7 +11,7 @@ class Director(object):
         self.component = component
 
     def build(self):
-        image_builder = ImageBuilder(
+        image_builder = operators.ImageBuilder(
             self.component.name,
             self.component.fqin,
             self.component.build_context,
@@ -20,8 +19,14 @@ class Director(object):
         image_builder.build()
 
     def launch(self):
-        service_builder = ServiceCreator(
+        service_creator = operators.ServiceCreator(
             self.component.name,
             self.component.build_service_context,
         )
-        service_builder.build()
+        service_creator.build()
+
+        job_creator = operators.JobCreator(
+            self.component.name,
+            self.component.create_job_context,
+        )
+        job_creator.create()

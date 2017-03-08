@@ -90,3 +90,47 @@ class TestImageBuilder(object):
             render_mock.call_args[0][0],
             'localhost:5000/test/version_core:v1',
         )
+
+
+class TestJobCreator(object):
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch, mocker):
+        render_mock = mocker.MagicMock()
+        kube_mock = mocker.MagicMock()
+        kube_class_mock = mocker.MagicMock(return_value=kube_mock)
+        operators.Kube = kube_class_mock
+        job_creator = operators.JobCreator(
+            'core',
+            {},
+        )
+        job_creator.render = render_mock
+        yield {
+            'operator': job_creator,
+            'render_mock': render_mock,
+            'kube_mock': kube_mock,
+        }
+
+    def test_dir_name(self):
+        result = operators.JobCreator.dir_name
+        expected = 'endpoint_creation'
+        assert result == expected
+
+    def test_base_template_name(self, setup):
+        job_creator = setup['operator']
+        result = job_creator.base_template_name
+        expected = 'create_endpoint_job'
+        assert result == expected
+
+    def test_create(self, setup):
+        job_creator = setup['operator']
+        render_mock = setup['render_mock']
+        kube_mock = setup['kube_mock']
+        job_creator.create()
+        render_mock.assert_called()
+        kube_mock.create.assert_called_with(
+            os.path.join(
+                render_mock.call_args[0][0],
+                job_creator.get_operation_file_name(),
+            )
+        )

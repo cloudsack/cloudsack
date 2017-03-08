@@ -22,7 +22,8 @@ class TestDirector(object):
         component.name = 'test'
         obj_mock = mocker.MagicMock()
         class_mock = mocker.MagicMock(return_value=obj_mock)
-        monkeypatch.setattr('cloudsack.director.ImageBuilder', class_mock)
+        monkeypatch.setattr('cloudsack.director.operators.ImageBuilder',
+                            class_mock)
         director = Director(component)
         director.build()
         class_mock.assert_called_with(

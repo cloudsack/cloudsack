@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function
 from future.utils import with_metaclass
 
 import os
@@ -9,6 +9,7 @@ import uuid
 
 from cloudsack import utils
 from cloudsack import const
+from cloudsack.kubeclient import Kube
 from cloudsack.dockerclient import Docker
 
 
@@ -87,9 +88,8 @@ class ImageBuilder(Operator):
         )
 
     def build(self):
-        template_path = '/Users/vamsis/projects/personal/cloudsack/cli/cloudsack/templates'
         source = os.path.join(
-            template_path, self.component_name, 'build_image')
+            const.TEMPLATE_PATH, self.component_name, 'build_image')
 
         with utils.make(self.get_arena(), src=source) as arena:
             self.render(arena)
@@ -121,3 +121,16 @@ class DeploymentCreator(Operator):
         with utils.make(self.get_arena()) as arena:
             self.render(arena)
             # Call pykube to create deployment
+
+
+class JobCreator(Operator):
+
+    dir_name = 'endpoint_creation'
+    base_template_name = 'create_endpoint_job'
+
+    def create(self):
+        with utils.make(self.get_arena()) as arena:
+            file_name = os.path.join(arena, self.get_operation_file_name())
+            self.render(arena)
+            kube = Kube()
+            kube.create(file_name)

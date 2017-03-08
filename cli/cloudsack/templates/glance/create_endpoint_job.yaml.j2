@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ name }}
+  namespace: {{ globals.namespace }}
+spec:
+  template:
+    metadata:
+      name: {{ name }}
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[
+          {
+            "name": "wait-for-keystone",
+            "image": "{{ base_fqin }}",
+            "imagePullPolicy": "Always",
+            "command": ["/bin/bash", "-c", "export OS_PROJECT_DOMAIN_NAME={{ keystone.project_domain }};export OS_USER_DOMAIN_NAME={{ keystone.user_domain }};export OS_PROJECT_NAME={{ keystone.project_name }};export OS_USERNAME={{ keystone.user }};export OS_PASSWORD={{ keystone.passwd }};export OS_AUTH_URL=http://{{ keystone.svc_name }}.{{ globals.namespace }}.svc.{{ globals.svc_dns_domain }}:{{ keystone.ports.public.port }}/v{{ keystone.api_version }};export OS_IDENTITY_API_VERSION={{ keystone.api_version }};export OS_IMAGE_API_VERSION={{ keystone.image_version }}; echo \"waiting for Keystone endpoints to Come Up...\"; while true; do if [ \"`/usr/bin/openstack service list | /bin/grep keystone`\" -a \"`/usr/bin/openstack endpoint list | /bin/grep {{ keystone.type }}`\" -a \"`/usr/bin/openstack user list | /bin/grep {{ keystone.user }}`\" ];then exit 0; else echo \"Waiting.....\"; fi;done;"]
+          }
+        ]'
+    spec:
+      containers:
+      - name: {{ name }}
+        image: {{ base_fqin }}
+        command: [ "/bin/bash", "-c", "source /opt/openrc/openrc && /bin/bash /opt/endpoint/{{ name }}-endpoint.sh" ]
+        volumeMounts:
+         - mountPath: /opt/endpoint
+           name: {{ name }}-endpoint
+         - mountPath: /opt/openrc
+           name: openrc
+      volumes:
+        - name: {{ name }}-endpoint
+          configMap:
+            name: {{ name }}-endpoint
+            items:
+             - key: {{ name }}-endpoint.sh
+               path: {{ name }}-endpoint.sh
+        - name: openrc
+          configMap:
+            name: openrc
+            items:
+             - key: openrc
+               path: openrc
+      restartPolicy: Never
