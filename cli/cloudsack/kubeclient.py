@@ -14,6 +14,11 @@ class Kube(object):
         self.api = pykube.HTTPClient(
             pykube.KubeConfig.from_file('/root/.kube/config'))
 
+    def create_service(self, file_name):
+        with open(file_name) as stream:
+            content = yaml.load(stream.read())
+        pykube.Service(self.api, content).create()
+
     def create_job(self, file_name):
         with open(file_name) as stream:
             content = yaml.load(stream.read())

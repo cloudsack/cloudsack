@@ -110,7 +110,9 @@ class ServiceCreator(Operator):
     def build(self):
         with utils.make(self.get_arena()) as arena:
             self.render(arena)
-            # Call pykube to create service
+            file_name = os.path.join(arena, self.get_operation_file_name())
+            kube = Kube()
+            kube.create_service(file_name)
 
 
 class DeploymentCreator(Operator):
@@ -130,7 +132,7 @@ class JobCreator(Operator):
 
     def create(self):
         with utils.make(self.get_arena()) as arena:
-            file_name = os.path.join(arena, self.get_operation_file_name())
             self.render(arena)
+            file_name = os.path.join(arena, self.get_operation_file_name())
             kube = Kube()
-            kube.create(file_name)
+            kube.create_job(file_name)

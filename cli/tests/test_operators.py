@@ -92,6 +92,50 @@ class TestImageBuilder(object):
         )
 
 
+class TestServiceCreator(object):
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch, mocker):
+        render_mock = mocker.MagicMock()
+        kube_mock = mocker.MagicMock()
+        kube_class_mock = mocker.MagicMock(return_value=kube_mock)
+        operators.Kube = kube_class_mock
+        service_creator = operators.ServiceCreator(
+            'core',
+            {},
+        )
+        service_creator.render = render_mock
+        yield {
+            'operator': service_creator,
+            'render_mock': render_mock,
+            'kube_mock': kube_mock,
+        }
+
+    def test_dir_name(self):
+        result = operators.ServiceCreator.dir_name
+        expected = 'service_creation'
+        assert result == expected
+
+    def test_base_template_name(self, setup):
+        service_creator = setup['operator']
+        result = service_creator.base_template_name
+        expected = 'service'
+        assert result == expected
+
+    def test_create(self, setup):
+        service_creator = setup['operator']
+        render_mock = setup['render_mock']
+        kube_mock = setup['kube_mock']
+        service_creator.build()
+        render_mock.assert_called()
+        kube_mock.create_service.assert_called_with(
+            os.path.join(
+                render_mock.call_args[0][0],
+                service_creator.get_operation_file_name(),
+            )
+        )
+
+
 class TestJobCreator(object):
 
     @pytest.fixture(autouse=True)
@@ -128,7 +172,7 @@ class TestJobCreator(object):
         kube_mock = setup['kube_mock']
         job_creator.create()
         render_mock.assert_called()
-        kube_mock.create.assert_called_with(
+        kube_mock.create_job.assert_called_with(
             os.path.join(
                 render_mock.call_args[0][0],
                 job_creator.get_operation_file_name(),

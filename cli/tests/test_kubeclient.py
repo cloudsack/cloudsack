@@ -37,6 +37,22 @@ class TestKube(object):
         setup['http_client_mock'].assert_called()
         setup['kube_config_mock'].from_file.assert_called()
 
+    def test_create_service(self, setup, mocker, monkeypatch):
+        kube = setup['kube']
+        api_mock = setup['api_mock']
+        instance_mock = mocker.MagicMock()
+        service_mock = mocker.MagicMock(return_value=instance_mock)
+        monkeypatch.setattr(
+            'cloudsack.kubeclient.pykube.Service',
+            service_mock,
+        )
+        file_name = os.path.join(
+            os.path.abspath(
+                os.path.dirname(__file__)), 'copyme', 'template.yaml')
+        kube.create_service(file_name)
+        service_mock.assert_called_with(api_mock, {'a': 'b', 'c': 'd'})
+        instance_mock.create.assert_called()
+
     def test_create_job(self, setup, mocker, monkeypatch):
         kube = setup['kube']
         api_mock = setup['api_mock']
