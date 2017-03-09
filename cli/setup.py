@@ -20,7 +20,7 @@ setup(
     author_email='ansuman.bebarta@gmail.com',
     url='',
     license='MIT',
-    py_modules=['cloudsack'],
+    packages=['cloudsack'],
     install_requires=['docker', 'Jinja2', 'pykube', 'future'],
     entry_points={
         'console_scripts': ['csack=cloudsack.cli:main']
