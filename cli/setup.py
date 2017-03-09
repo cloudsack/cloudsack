@@ -6,6 +6,10 @@ from __future__ import unicode_literals
 from setuptools import setup
 
 
+with open('requirements.txt') as stream:
+    install_requires = stream.read().strip().splitlines()
+
+
 # TODO: Pick version from release.py
 setup(
     name='cloudsack',

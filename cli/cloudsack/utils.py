@@ -36,12 +36,6 @@ def get_name_from_fqin(full_image_name):
     return match.groupdict().get('image_name')
 
 
-def get_temp(prefixes):
-    prefixes.append(str(uuid.uuid4()))
-    dirname = '_'.join(prefixes)
-    return os.path.join(WORK_DIR, dirname)
-
-
 @contextmanager
 def make(name, src=None):
     """Context to create and remove directory.
@@ -88,9 +82,6 @@ class Directory(type):
         return os.path.join(WORK_DIR, cls.dir_name)
 
     def __call__(cls, *args, **kwargs):
-        if not os.path.exists(WORK_DIR):
-            error_message = 'Invalid work directory path: {}'.format(WORK_DIR)
-            raise ValueError(error_message)
         cls.work_area = cls.get_path()
         if not os.path.exists(cls.work_area):
             os.mkdir(cls.work_area)

@@ -1,0 +1,4 @@
+docker==2.0.2
+future==0.16.0
+Jinja2==2.9.5
+pykube==0.14.0

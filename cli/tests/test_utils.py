@@ -63,6 +63,19 @@ def test_make():
     assert not os.path.exists(name)
 
 
+def test_make_remove_existing():
+    dir_name = tempfile.mkdtemp()
+    file_name = tempfile.mkstemp(dir=dir_name)[1]
+    context = utils.make(dir_name)
+    next(context.gen)
+    assert os.path.exists(dir_name)
+    assert not os.path.exists(file_name)
+    try:
+        next(context.gen)
+    except StopIteration:
+        pass
+
+
 def test_make_copy_dir():
     name = os.path.join(tempfile.gettempdir(), str(uuid.uuid4()))
     src = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'copyme')

@@ -115,16 +115,6 @@ class ServiceCreator(Operator):
             kube.create_service(file_name)
 
 
-class DeploymentCreator(Operator):
-
-    dir_name = 'deployment_creation'
-
-    def create(self):
-        with utils.make(self.get_arena()) as arena:
-            self.render(arena)
-            # Call pykube to create deployment
-
-
 class JobCreator(Operator):
 
     dir_name = 'endpoint_creation'
