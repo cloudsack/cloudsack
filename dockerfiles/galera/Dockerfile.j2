@@ -1,0 +1,20 @@
+FROM labs.pramati.com:5000/cloudsack/mariadb
+
+RUN apt-get update && apt-get -y install wget
+RUN wget -O - http://download.gluster.org/pub/gluster/glusterfs/3.7/LATEST/rsa.pub | apt-key add -
+RUN DEBID=$(grep 'VERSION_ID=' /etc/os-release | cut -d '=' -f 2 | tr -d '"')
+RUN DEBVER=$(grep 'VERSION=' /etc/os-release | grep -Eo '[a-z]+')
+RUN echo -e "172.16.20.56 yumserver\n172.16.20.62 kubeminion" >> /etc/hosts
+RUN echo deb http://download.gluster.org/pub/gluster/glusterfs/3.7/LATEST/Debian/jessie/apt jessie main > /etc/apt/sources.list.d/gluster.list 
+
+RUN apt-get update && apt-get install -y galera-arbitrator-3 glusterfs-client && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY galera-entrypoint.sh /
+
+RUN chmod +x /galera-entrypoint.sh
+
+EXPOSE 3306 4444 4567 4567/udp 4568
+
+ENTRYPOINT ["/galera-entrypoint.sh"]
+CMD ["mysqld"]

@@ -1,0 +1,14 @@
+{% for key in glusterfs.mariadb %}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ key }}-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ glusterfs.size }}
+
+{% endfor %}

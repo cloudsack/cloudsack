@@ -1,0 +1,35 @@
+---
+- name: Install glusterfs client
+  hosts: kubemaster:kubeminion
+  gather_facts: no
+  become: yes
+  tasks:
+  - name: Add the repository for glusterfs-3.7
+    #shell: add-apt-repository ppa:gluster/glusterfs-3.7
+    apt_repository: repo='ppa:gluster/glusterfs-3.7' state=present update_cache=yes validate_certs=no
+
+  - name: Install glusterfs client package
+    apt: name=glusterfs-client
+
+- name: Configure PV
+  hosts: kubemaster
+  gather_facts: no
+  tasks:
+  - name: Ensure pv_setup directory is present
+    file: name=/tmp/pv_setup state=directory
+  
+  - name: Render values and create specification files
+    template: src=../templates/pv_setup/{{ item }}.j2 dest=/tmp/pv_setup/{{ item }}.yaml
+    with_items:
+      - gluster_service
+      - gluster_endpoint
+      - pv
+      - pvc
+  
+  - name: Launch pv related components
+    shell: kubectl create -f /tmp/pv_setup/{{ item }}.yaml
+    with_items:
+      - gluster_service
+      - gluster_endpoint
+      - pv
+      - pvc
