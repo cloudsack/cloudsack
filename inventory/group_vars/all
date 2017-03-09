@@ -18,6 +18,19 @@ docker:
   tag: 1.0
   images: [base, galera, rabbitmq, memcached, keystone, glance, nova, neutron-provider, neutron-selfservice, horizon, cinder, heat, swift]
 
+glusterfs:
+  name: glusterfs-cluster
+  port: 1
+  source_cluster_ip: 172.16.20.56
+  size: 2Gi
+  mariadb:
+    mariadb1:
+      source: datavol1
+    mariadb2:
+      source: datavol2
+    mariadb3:
+      source: datavol3
+
 mariadb_cluster:
   mariadb:
     svc_name: mariadb-svc

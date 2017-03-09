@@ -1,0 +1,48 @@
+---
+- name: Setup glusterfs service, endpoint, PV and PVC
+  include: setup_pv.yaml
+
+- name: Setup DB cluster
+  hosts: kubemaster
+  gather_facts: no
+  tasks:
+  - set_fact: kind=Deployment
+
+  - file: name=/tmp/in_progress state=directory
+
+  - name: Generate service spec file
+    template: src=../templates/mariadb/service.j2 dest=/tmp/in_progress/{{ item.key }}-svc.yaml
+    with_dict: "{{ mariadb_cluster }}"
+
+  - name: Generate deployment spec file
+    template: src=../templates/mariadb/deployment.j2 dest=/tmp/in_progress/{{ item.key }}.yaml
+    with_dict: "{{ mariadb_cluster }}"
+    when: item.key != 'mariadb'
+
+  - name: Create mariadb related services
+    shell: kubectl create -f /tmp/in_progress/{{ item.key }}-svc.yaml
+    with_dict: "{{ mariadb_cluster }}"
+
+  - name: Launch master node of mariadb cluster
+    shell: kubectl create -f /tmp/in_progress/mariadb1.yaml
+
+  - name: Wait for master node to be funtional
+    pause: seconds=120
+
+  - name: Launch remaining mariadb nodes
+    shell: kubectl create -f /tmp/in_progress/{{ item.key }}.yaml; sleep 90
+    with_dict: "{{ mariadb_cluster }}"
+    when: item.key != 'mariadb1' and item.key != 'mariadb'
+
+  - name: Remove the new setup cluster parameter
+    lineinfile: dest=/tmp/in_progress/mariadb1.yaml regexp=wsrep-new-cluster state=absent
+
+  - name: Clear the master configuration and data
+    shell: kubectl exec -it mariadb-controller1-437153429-wjx9z "rm -rf /var/lib/mysql/*"; sleep 5
+
+  - name: Apply the new configuration to the deployment
+    shell: kubectl apply -f /tmp/in_progress/mariadb1.yaml
+
+  - name: Wait for master nodes to re-join the cluster
+    pause: seconds=90
+
